@@ -14,9 +14,9 @@ def load_y_test(mode, seed):
         "datasets", "synthetic", mode, f"seed_{seed}", "test.npz"
     )
     data = np.load(path)
-    y = torch.tensor(data["X"], dtype=torch.float32)
-    x_true = data["Y"]
-    return y, x_true
+    X = torch.tensor(data["X"], dtype=torch.float32)
+    y_true = data["Y"]
+    return X, y_true
 
 
 def load_x_normalization_params(mode, seed):
@@ -72,16 +72,16 @@ def main(args):
         "cpu"
     )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    y, x_true = load_y_test(
+    X, y_true = load_y_test(
         args.data_name, args.seed
     )  # [N, y_dim], [N, x_dim]
-    y_dim = y.shape[1]
-    x_dim = x_true.shape[1]
+    x_dim = X.shape[1]
+    y_dim = y_true.shape[1]
 
     generator = GCDSGenerator(
-        x_dim=y_dim,
+        x_dim=x_dim,
         noise_dim=args.noise_dim,
-        y_dim=x_dim,
+        y_dim=y_dim,
         hidden_dim=args.hidden_dim,
     ).to(device)
 
@@ -103,7 +103,7 @@ def main(args):
 
     x_hat = sample_multiple_batches(
         generator=generator,
-        y=y,
+        y=X,
         num_samples=args.num_samples,
         batch_size=args.batch_size,
         noise_dim=args.noise_dim,
@@ -128,8 +128,8 @@ def main(args):
     np.savez(
         out_path,
         X_hat=x_hat.cpu().numpy(),  # [N, S, x_dim]
-        Y=y.cpu().numpy(),  # [N, y_dim]
-        X_true=x_true,  # [N, x_dim]
+        X=X.cpu().numpy(),  # [N, x_dim]
+        y_true=y_true,  # [N, y_dim]
     )
 
     print(f"Saved samples to {out_path}")

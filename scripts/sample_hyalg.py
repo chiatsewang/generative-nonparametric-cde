@@ -15,9 +15,9 @@ def load_dataset(mode, seed):
         "datasets", "synthetic", mode, f"seed_{seed}", "test.npz"
     )
     data = np.load(path)
-    x = data["Y"]
-    y = torch.tensor(data["X"], dtype=torch.float32)
-    return y, x
+    Y = data["Y"]
+    X = torch.tensor(data["X"], dtype=torch.float32)
+    return X, Y
 
 
 def main(args):

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "generative-nonparametric-cde"
-version = "0.1.0"
+version = "1.0.0"
 description = "A benchmark comparing traditional statistical methods and generative modeling approaches for conditional density estimation"
 authors = [{name = "Chiatse Wang", email = "chiatsewang@stat.sinica.edu.tw"}]
 readme = "README.md"

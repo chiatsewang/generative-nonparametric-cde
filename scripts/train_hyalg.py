@@ -17,11 +17,11 @@ def load_dataset(mode, split, seed):
         "datasets", "synthetic", mode, f"seed_{seed}", f"{split}.npz"
     )
     data = np.load(path)
-    x = torch.tensor(data["X"], dtype=torch.float32)
-    y = torch.tensor(data["Y"], dtype=torch.float32)
-    if y.shape[-1] == 1:
-        y = y.squeeze(-1)
-    return x, y
+    X = torch.tensor(data["X"], dtype=torch.float32)
+    Y = torch.tensor(data["Y"], dtype=torch.float32)
+    if Y.shape[-1] == 1:
+        Y = Y.squeeze(-1)
+    return X, Y
 
 
 def main(args):
@@ -31,7 +31,7 @@ def main(args):
         "cpu"
     )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    Y, X = load_dataset(args.data_name, "train", args.seed)
+    X, Y = load_dataset(args.data_name, "train", args.seed)
     X, Y = X.to(device), Y.to(device)
 
     d = Y.shape[1]

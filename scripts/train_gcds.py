@@ -22,9 +22,9 @@ def load_dataset(mode, split, seed):
         "datasets", "synthetic", mode, f"seed_{seed}", f"{split}.npz"
     )
     data = np.load(path)
-    x = torch.tensor(data["X"], dtype=torch.float32)
-    y = torch.tensor(data["Y"], dtype=torch.float32)
-    return x, y
+    X = torch.tensor(data["X"], dtype=torch.float32)
+    Y = torch.tensor(data["Y"], dtype=torch.float32)
+    return X, Y
 
 
 def normalize_tensor(tensor):
@@ -44,12 +44,11 @@ def main(args):
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device("cpu")
 
-    y_train, x_train = load_dataset(args.data_name, "train", args.seed)
-    y_val, x_val = load_dataset(args.data_name, "valid", args.seed)
+    X_train, Y_train = load_dataset(args.data_name, "train", args.seed)
+    X_val, Y_val = load_dataset(args.data_name, "valid", args.seed)
 
-    x_train, x_mean, x_std = normalize_tensor(x_train)
-    x_val = apply_normalization(x_val, x_mean, x_std)
-
+    X_train, x_mean, x_std = normalize_tensor(X_train)
+    X_val = apply_normalization(X_val, x_mean, x_std)
     x_mean = x_mean.view(1, -1)
     x_std = x_std.view(1, -1)
 
@@ -65,20 +64,20 @@ def main(args):
     print(f"Saved X normalization parameters to {norm_path}")
 
     train_loader = DataLoader(
-        TensorDataset(x_train, y_train),
+        TensorDataset(X_train, Y_train),
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=4,
     )
     # val_loader = DataLoader(
-    #     TensorDataset(x_val, y_val),
+    #     TensorDataset(X_val, Y_val),
     #     batch_size=args.batch_size,
     #     shuffle=False,
     #     num_workers=4,
     # )
 
-    x_dim = x_train.shape[1]
-    y_dim = y_train.shape[1]
+    x_dim = X_train.shape[1]
+    y_dim = Y_train.shape[1]
 
     print(f"[GCDS] x_dim ={x_dim} y_dim={y_dim}")
 
