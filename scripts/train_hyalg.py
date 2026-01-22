@@ -34,7 +34,7 @@ def main(args):
     X, Y = load_dataset(args.data_name, "train", args.seed)
     X, Y = X.to(device), Y.to(device)
 
-    d = Y.shape[1]
+    d = X.shape[1]
     grid_pts = torch.linspace(-1.5, 1.5, 3, device=device)
     mesh = torch.meshgrid(*[grid_pts] * d, indexing="ij")
     A_centers = torch.stack([g.reshape(-1) for g in mesh], dim=1)
@@ -47,7 +47,7 @@ def main(args):
 
     start_all = time.time()
     result = minimize(
-        S_theta(Y, X, A_centers, args.radius, args.h),
+        S_theta(X, Y, A_centers, args.radius, args.h),
         theta0,
         method="SLSQP",
         constraints=[{"type": "eq", "fun": lambda t: np.linalg.norm(t) - 1}],
