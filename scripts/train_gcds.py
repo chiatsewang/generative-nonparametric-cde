@@ -47,21 +47,20 @@ def main(args):
     X_train, Y_train = load_dataset(args.data_name, "train", args.seed)
     X_val, Y_val = load_dataset(args.data_name, "valid", args.seed)
 
-    X_train, x_mean, x_std = normalize_tensor(X_train)
-    X_val = apply_normalization(X_val, x_mean, x_std)
-    x_mean = x_mean.view(1, -1)
-    x_std = x_std.view(1, -1)
+    Y_train, y_mean, y_std = normalize_tensor(Y_train)
+    Y_val = apply_normalization(Y_val, y_mean, y_std)
+    y_mean = y_mean.view(1, -1)
+    y_std = y_std.view(1, -1)
 
-    print(f"X mean: {x_mean.numpy().flatten()}")
-    print(f"X std:  {x_std.numpy().flatten()}")
-
+    print(f"Y mean: {y_mean.numpy().flatten()}")
+    print(f"Y std:  {y_std.numpy().flatten()}")
     norm_dir = os.path.join(
         "datasets", "synthetic", args.data_name, f"seed_{args.seed}"
     )
     os.makedirs(norm_dir, exist_ok=True)
-    norm_path = os.path.join(norm_dir, "x_normalization_params.npz")
-    np.savez(norm_path, mean=x_mean.numpy(), std=x_std.numpy())
-    print(f"Saved X normalization parameters to {norm_path}")
+    norm_path = os.path.join(norm_dir, "Y_normalization_params.npz")
+    np.savez(norm_path, mean=y_mean.numpy(), std=y_std.numpy())
+    print(f"Saved Y normalization parameters to {norm_path}")
 
     train_loader = DataLoader(
         TensorDataset(X_train, Y_train),
