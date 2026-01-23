@@ -84,7 +84,7 @@ def main(args):
     noise_dim = 3
 
     generator = GCDSGenerator(
-        y_dim, noise_dim, x_dim, hidden_dim=args.hidden_dim
+        x_dim, noise_dim, y_dim, hidden_dim=args.hidden_dim
     ).to(device)
     discriminator = GCDSDiscriminator(
         x_dim, y_dim, hidden_dims=(args.hidden_dim, args.hidden_dim // 2)
