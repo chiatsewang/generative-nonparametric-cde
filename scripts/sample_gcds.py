@@ -29,7 +29,7 @@ def load_test_data(mode, seed):
 def load_Y_normalization_params(mode, seed):
     path = os.path.join(
         "workspaces",
-        "ddpm",
+        "gcds",
         mode,
         f"seed_{seed}",
         "Y_normalization_params.npz",

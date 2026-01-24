@@ -55,7 +55,7 @@ def main(args):
     print(f"Y mean: {y_mean.numpy().flatten()}")
     print(f"Y std:  {y_std.numpy().flatten()}")
     norm_dir = os.path.join(
-        "datasets", "synthetic", args.data_name, f"seed_{args.seed}"
+        "workspaces", "gcds", args.data_name, f"seed_{args.seed}"
     )
     os.makedirs(norm_dir, exist_ok=True)
     norm_path = os.path.join(norm_dir, "Y_normalization_params.npz")
