@@ -17,11 +17,11 @@ def load_dataset(mode, split, seed):
         "datasets", "synthetic", mode, f"seed_{seed}", f"{split}.npz"
     )
     data = np.load(path)
-    x = torch.tensor(data["X"], dtype=torch.float32)
-    y = torch.tensor(data["Y"], dtype=torch.float32)
-    if y.shape[-1] == 1:
-        y = y.squeeze(-1)
-    return x, y
+    X = torch.tensor(data["X"], dtype=torch.float32)
+    Y = torch.tensor(data["Y"], dtype=torch.float32)
+    if Y.shape[-1] == 1:
+        Y = Y.squeeze(-1)
+    return X, Y
 
 
 def main(args):
@@ -31,10 +31,10 @@ def main(args):
         "cpu"
     )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    Y, X = load_dataset(args.data_name, "train", args.seed)
+    X, Y = load_dataset(args.data_name, "train", args.seed)
     X, Y = X.to(device), Y.to(device)
 
-    d = Y.shape[1]
+    d = X.shape[1]
     grid_pts = torch.linspace(-1.5, 1.5, 3, device=device)
     mesh = torch.meshgrid(*[grid_pts] * d, indexing="ij")
     A_centers = torch.stack([g.reshape(-1) for g in mesh], dim=1)
@@ -47,7 +47,7 @@ def main(args):
 
     start_all = time.time()
     result = minimize(
-        S_theta(Y, X, A_centers, args.radius, args.h),
+        S_theta(X, Y, A_centers, args.radius, args.h),
         theta0,
         method="SLSQP",
         constraints=[{"type": "eq", "fun": lambda t: np.linalg.norm(t) - 1}],

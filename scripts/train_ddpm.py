@@ -118,12 +118,13 @@ def main(args):
     start_all = time.time()
     best_val_loss = float("inf")
     best_model_state = None
-    # for early stopping
+
+    # For early stopping
     best_epoch = 0
     epochs_no_improve = 0
-    # to draw curves
+
+    # For drawing curves and remember each epoch elapsed time
     train_losses, val_losses = [], []
-    # to remember each epoch elapsed time
     epoch_times = []
 
     for epoch in range(1, args.epochs + 1):
@@ -151,11 +152,11 @@ def main(args):
         avg_train_loss = total_loss / n_batches
         val_loss = evaluate(model, diffusion, val_loader, device)
 
-        # to draw loss curves
+        # Record losses for plotting
         train_losses.append(avg_train_loss)
         val_losses.append(val_loss)
 
-        # check if the model is improved
+        # Check if the model is improved
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model_state = copy.deepcopy(model.state_dict())
@@ -164,7 +165,7 @@ def main(args):
         else:
             epochs_no_improve += 1
 
-        # early stop if not improved after patience times
+        # Early stop if not improved after patience times
         if args.early_stop and epochs_no_improve >= args.patience:
             print(
                 f"Early stopping at epoch {epoch} (best at {best_epoch}: {best_val_loss:.6f})"

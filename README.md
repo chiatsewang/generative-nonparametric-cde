@@ -33,7 +33,7 @@ pre-commit install
 
 ## Available Methods
 
-- **HyAlg** - Kernel-based method (Hu & Yao algorithm)
+- **HyAlg** - Kernel-based method (Hall & Yao method)
 - **FlexCode** - Flexible conditional density estimation
 - **DeepCDE** - Deep Conditional Density Estimation
 - **GCDS** - Generative Conditional Density Sampling

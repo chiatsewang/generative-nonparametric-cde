@@ -15,9 +15,9 @@ def load_dataset(mode, seed):
         "datasets", "synthetic", mode, f"seed_{seed}", "test.npz"
     )
     data = np.load(path)
-    x = data["Y"]
-    y = torch.tensor(data["X"], dtype=torch.float32)
-    return y, x
+    Y = data["Y"]
+    X = torch.tensor(data["X"], dtype=torch.float32)
+    return X, Y
 
 
 def main(args):
@@ -27,7 +27,7 @@ def main(args):
         "cpu"
     )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    y, x_true = load_dataset(args.data_name, args.seed)
+    x, y_true = load_dataset(args.data_name, args.seed)
 
     workspace_dir = os.path.join(
         "workspaces", "hyalg", args.data_name, f"seed_{args.seed}"
@@ -47,33 +47,33 @@ def main(args):
             "train.npz",
         )
     )
-    X_train = torch.tensor(train_data["Y"], dtype=torch.float32, device=device)
-    Y_train = torch.tensor(train_data["X"], dtype=torch.float32, device=device)
-    if X_train.shape[-1] == 1:
-        X_train = X_train.squeeze(-1)
+    X_train = torch.tensor(train_data["X"], dtype=torch.float32, device=device)
+    Y_train = torch.tensor(train_data["Y"], dtype=torch.float32, device=device)
+    if Y_train.shape[-1] == 1:
+        Y_train = Y_train.squeeze(-1)
     # x_test = torch.tensor(x_true, dtype=torch.float32, device=device)
     # x_test = torch.tensor(y, dtype=torch.float32, device=device)
-    x_test = y.to(device)
+    x_test = x.to(device)
     yGrid = torch.linspace(
-        Y_train.min(), Y_train.max(), args.ygrid, device=device
+        X_train.min(), X_train.max(), args.ygrid, device=device
     )
 
     y_samples = sample_conditional(
-        Y_train, X_train, x_test, theta, yGrid, args.H, args.num_samples
+        X_train, Y_train, x_test, theta, yGrid, args.H, args.num_samples
     )  # [N, S]
 
-    x_hat = y_samples.unsqueeze(-1)  # [N, S, 1]
+    y_hat = y_samples.unsqueeze(-1)  # [N, S, 1]
 
     out_path = os.path.join(workspace_dir, "sampled.npz")
     np.savez(
         out_path,
-        X_hat=x_hat.cpu().numpy(),
-        Y=y.cpu().numpy(),
-        X_true=x_true,
+        Y_hat=y_hat.cpu().numpy(),
+        X=x.cpu().numpy(),
+        Y_true=y_true,
     )
 
     print(f"Saved samples to {out_path}")
-    print(f"Shape: {x_hat.shape} (N, S, x_dim)")
+    print(f"Shape: {y_hat.shape} (N, S, y_dim)")
 
 
 if __name__ == "__main__":

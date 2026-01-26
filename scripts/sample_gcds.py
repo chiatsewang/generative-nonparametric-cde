@@ -9,23 +9,30 @@ from tqdm import tqdm
 from condgen_benchmark.methods.gcds.core import GCDSGenerator
 
 
-def load_y_test(mode, seed):
+def load_test_data(mode, seed):
+    """
+    Load test dataset.
+
+    Returns:
+        X: torch.Tensor of shape [N, X_dim]
+        Y_true: np.ndarray of shape [N, Y_dim]
+    """
     path = os.path.join(
         "datasets", "synthetic", mode, f"seed_{seed}", "test.npz"
     )
     data = np.load(path)
-    y = torch.tensor(data["X"], dtype=torch.float32)
-    x_true = data["Y"]
-    return y, x_true
+    X = torch.tensor(data["X"], dtype=torch.float32)
+    Y_true = data["Y"]
+    return X, Y_true
 
 
-def load_x_normalization_params(mode, seed):
+def load_Y_normalization_params(mode, seed):
     path = os.path.join(
-        "datasets",
-        "synthetic",
+        "workspaces",
+        "gcds",
         mode,
         f"seed_{seed}",
-        "x_normalization_params.npz",
+        "Y_normalization_params.npz",
     )
     data = np.load(path)
     mean = torch.tensor(data["mean"], dtype=torch.float32)
@@ -35,10 +42,10 @@ def load_x_normalization_params(mode, seed):
 
 @torch.no_grad()
 def sample_multiple_batches(
-    generator, y, num_samples, batch_size, noise_dim, device
+    generator, X, num_samples, batch_size, noise_dim, device
 ):
     loader = DataLoader(
-        TensorDataset(y),
+        TensorDataset(X),
         batch_size=batch_size,
         num_workers=4,
         pin_memory=True,
@@ -46,23 +53,23 @@ def sample_multiple_batches(
         drop_last=False,
     )
 
-    x_hats = []
+    y_hats = []
 
-    for (yb,) in tqdm(loader, desc="Sampling", leave=False):
-        yb = yb.to(device)  # [B, y_dim]
-        B = yb.shape[0]
+    for (Xb,) in tqdm(loader, desc="Sampling", leave=False):
+        Xb = Xb.to(device)  # [B, X_dim]
+        B = Xb.shape[0]
 
-        yb_repeat = yb.repeat_interleave(num_samples, dim=0)  # [B * S, y_dim]
+        Xb_repeat = Xb.repeat_interleave(num_samples, dim=0)  # [B * S, X_dim]
         noise = torch.randn(
             B * num_samples, noise_dim, device=device
         )  # [B * S, noise_dim]
 
-        xb = generator(yb_repeat, noise).view(
+        yb = generator(Xb_repeat, noise).view(
             B, num_samples, -1
-        )  # [B, S, x_dim]
-        x_hats.append(xb)
+        )  # [B, S, Y_dim]
+        y_hats.append(yb)
 
-    return torch.cat(x_hats, dim=0)  # [N, S, x_dim]
+    return torch.cat(y_hats, dim=0)  # [N, S, Y_dim]
 
 
 def main(args):
@@ -72,16 +79,16 @@ def main(args):
         "cpu"
     )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    y, x_true = load_y_test(
+    X, Y_true = load_test_data(
         args.data_name, args.seed
-    )  # [N, y_dim], [N, x_dim]
-    y_dim = y.shape[1]
-    x_dim = x_true.shape[1]
+    )  # [N, x_dim], [N, y_dim]
+    X_dim = X.shape[1]
+    Y_dim = Y_true.shape[1]
 
     generator = GCDSGenerator(
-        x_dim=y_dim,
+        x_dim=X_dim,
         noise_dim=args.noise_dim,
-        y_dim=x_dim,
+        y_dim=Y_dim,
         hidden_dim=args.hidden_dim,
     ).to(device)
 
@@ -101,23 +108,23 @@ def main(args):
     print(f"Loaded generator from {ckpt_path} successfully.")
     generator.eval()
 
-    x_hat = sample_multiple_batches(
+    Y_hat = sample_multiple_batches(
         generator=generator,
-        y=y,
+        X=X,
         num_samples=args.num_samples,
         batch_size=args.batch_size,
         noise_dim=args.noise_dim,
         device=device,
-    )  # [N, S, x_dim]
+    )  # [N, S, Y_dim]
 
     # Denormalize X_hat
-    x_mean, x_std = load_x_normalization_params(args.data_name, args.seed)
-    print(f"Loaded X normalization mean: {x_mean.view(-1).numpy()}")
-    print(f"Loaded X normalization std:  {x_std.view(-1).numpy()}")
+    Y_mean, Y_std = load_Y_normalization_params(args.data_name, args.seed)
+    print(f"Loaded Y normalization mean: {Y_mean.view(-1).numpy()}")
+    print(f"Loaded Y normalization std:  {Y_std.view(-1).numpy()}")
 
-    x_mean = x_mean.view(1, 1, -1).to(x_hat.device)  # [1, 1, x_dim]
-    x_std = x_std.view(1, 1, -1).to(x_hat.device)
-    x_hat = x_hat * x_std + x_mean
+    Y_mean = Y_mean.view(1, 1, -1).to(Y_hat.device)  # [1, 1, y_dim]
+    Y_std = Y_std.view(1, 1, -1).to(Y_hat.device)
+    Y_hat = Y_hat * Y_std + Y_mean
 
     out_dir = os.path.join(
         "workspaces", "gcds", args.data_name, f"seed_{args.seed}"
@@ -127,13 +134,13 @@ def main(args):
 
     np.savez(
         out_path,
-        X_hat=x_hat.cpu().numpy(),  # [N, S, x_dim]
-        Y=y.cpu().numpy(),  # [N, y_dim]
-        X_true=x_true,  # [N, x_dim]
+        Y_hat=Y_hat.cpu().numpy(),  # [N, S, Y_dim]
+        X=X.cpu().numpy(),  # [N, X_dim]
+        Y_true=Y_true,  # [N, Y_dim]
     )
 
     print(f"Saved samples to {out_path}")
-    print(f"Shape: {x_hat.shape} (N, S, x_dim)")
+    print(f"Shape: {Y_hat.shape} (N, S, Y_dim)")
 
 
 if __name__ == "__main__":
