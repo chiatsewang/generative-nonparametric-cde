@@ -68,6 +68,52 @@ def sample_Y_given_X(
     return samples[..., None]  # (N, S, 1)
 
 
+def predict_on_training_grid(model, X_cond: np.ndarray):
+    """Predict conditional densities on the response grid stored at training."""
+    if not hasattr(model, "y_grid") or model.y_grid is None:
+        raise ValueError(
+            "The FlexCode checkpoint has no saved response grid (y_grid). "
+            "Retrain the model with train-flex to save it."
+        )
+
+    y_grid = np.asarray(model.y_grid, dtype=np.float64).reshape(-1)
+    if (
+        y_grid.size < 2
+        or not np.all(np.isfinite(y_grid))
+        or not np.all(np.diff(y_grid) > 0)
+    ):
+        raise ValueError(
+            "Saved FlexCode response grid must be finite and increasing."
+        )
+
+    prediction = model.predict(X_cond, n_grid=y_grid.size)
+    if isinstance(prediction, tuple):
+        cde_mat, predicted_grid = prediction
+    else:
+        cde_mat, predicted_grid = prediction, None
+
+    cde_mat = np.asarray(cde_mat)
+    if cde_mat.shape != (len(X_cond), len(y_grid)):
+        raise ValueError(
+            "FlexCode density shape does not match the training response grid: "
+            f"density={cde_mat.shape}, expected={(len(X_cond), len(y_grid))}."
+        )
+
+    if predicted_grid is not None:
+        predicted_grid = np.asarray(predicted_grid, dtype=np.float64).reshape(
+            -1
+        )
+        if predicted_grid.shape != y_grid.shape or not np.allclose(
+            predicted_grid, y_grid, rtol=1e-7, atol=1e-9
+        ):
+            raise ValueError(
+                "FlexCode predict() returned a response grid different from "
+                "the one saved during training."
+            )
+
+    return cde_mat, y_grid
+
+
 # Main
 def main(args):
     np.random.seed(args.seed)
@@ -101,22 +147,9 @@ def main(args):
                 f"Failed to load model with safe allowlist. {type(e).__name__}: {e}"
             )
 
-    # Predict conditional density on a grid
-    pred = model.predict(X_cond, n_grid=args.ny)
-    if isinstance(pred, tuple):
-        cde_mat, y_grid_pred = pred
-    else:
-        cde_mat, y_grid_pred = pred, None
-
-    # Decide grid priority: model.y_grid > predict's grid > fallback
-    if hasattr(model, "y_grid"):
-        y_grid = np.asarray(model.y_grid).ravel()
-    elif y_grid_pred is not None:
-        y_grid = np.asarray(y_grid_pred).ravel()
-    else:
-        y_min = float(np.min(Y_true))
-        y_max = float(np.max(Y_true))
-        y_grid = np.linspace(y_min, y_max, args.ny)
+    # Use the response grid saved during training. The sampling command
+    # must not independently choose the number or locations of grid points.
+    cde_mat, y_grid = predict_on_training_grid(model, X_cond)
 
     # Draw samples of Y|X
     Y_hat = sample_Y_given_X(cde_mat, y_grid, num_samples=args.num_samples)
@@ -142,9 +175,6 @@ if __name__ == "__main__":
     p.add_argument("--seed", type=int, default=230)
     p.add_argument("--data-name", type=str, default="U1")
     p.add_argument("--num-samples", type=int, default=2000)
-    p.add_argument(
-        "--ny", type=int, default=200, help="n_grid for predict if needed"
-    )
     p.add_argument(
         "--tuned-model",
         action="store_true",
