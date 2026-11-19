@@ -156,7 +156,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--seed", type=int, default=230, help="Dataset seed")
     parser.add_argument(
-        "--data-name", type=str, default="M1", help="Synthetic data model"
+        "--data-name", type=str, default="U1", help="Synthetic data model"
     )
     parser.add_argument(
         "--algorithm",

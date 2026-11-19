@@ -83,7 +83,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230, help="Dataset seed")
-    parser.add_argument("--data-name", type=str, default="M1")
+    parser.add_argument("--data-name", type=str, default="U1")
     parser.add_argument("--radius", type=float, default=1.0)
     parser.add_argument("--h", type=float, default=0.7)
     args = parser.parse_args()

@@ -140,7 +140,7 @@ if __name__ == "__main__":
         description="Sample from FlexCode (grid embedded; no extra npy)"
     )
     p.add_argument("--seed", type=int, default=230)
-    p.add_argument("--data-name", type=str, default="M1")
+    p.add_argument("--data-name", type=str, default="U1")
     p.add_argument("--num-samples", type=int, default=2000)
     p.add_argument(
         "--ny", type=int, default=200, help="n_grid for predict if needed"

@@ -184,7 +184,7 @@ if __name__ == "__main__":
         description="Train FlexCode (no extra grid files)"
     )
     p.add_argument("--seed", type=int, default=230)
-    p.add_argument("--data-name", type=str, default="M1")
+    p.add_argument("--data-name", type=str, default="U1")
 
     # select basis
     p.add_argument("--basis", type=str, default="cosine")

@@ -1,4 +1,4 @@
-.PHONY: all M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 clean help \
+.PHONY: all U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4 clean help \
 		generate generate-all \
 		eval eval-all \
         train-ddpm-single train-ddpm sample-ddpm-single sample-ddpm \
@@ -16,15 +16,15 @@ PYTHON := PYTHONPATH=. python
 # PYTHON := python
 
 # REPEATED RUN SETTING MODELS x SEEDS and ALGOS for evaluation
-ALL_MODELS := M1 M2 M3 M4 M5 M6 M7 M8 M9 M10
+ALL_MODELS := U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4
 ALL_SEEDS := 230 460 690 920 1150 1380 1610 1840 2070 2300
 ALL_ALGOS := ddpm gcds hyalg flex deepcde
 
 
 # MODELS TO SKIP FOR SPECIFIC ALGOS
-HY_SKIP_MODELS := M7 M8 M10
-FLEX_SKIP_MODELS := M10
-DEEPCDE_SKIP_MODELS := M10
+HY_SKIP_MODELS := U5 U6 M1 M2 M3 M4
+FLEX_SKIP_MODELS := M1 M2 M3 M4
+DEEPCDE_SKIP_MODELS := M1 M2 M3 M4
 
 
 # === DEFAULT VALUE FOR TRAINING and VALIDATION and TEST SAMPLE SIZE ===
@@ -38,7 +38,7 @@ SAMPLES ?= 2000
 # === Default DATA_MODEL & SEED & ALGO ===
 # ALGO is used for evaluation
 
-DATA_MODEL ?= M1
+DATA_MODEL ?= U1
 SEED   ?= 230
 #ALGO ?= ddpm
 
@@ -507,7 +507,7 @@ help:
 	@echo "-------------------------------------------------------"
 	@echo " 2. Control Variables"
 	@echo "-------------------------------------------------------"
-	@echo "  DATA_MODEL         : Target Model (M1..M10). Default: All"
+	@echo "  DATA_MODEL         : Target Model (U1..U7, M1..M4). Default: All"
 	@echo "  SEED               : Target Seed (230..). Default: All"
 	@echo "  ALGO               : Target Algo (for eval). Default: All"
 	@echo ""
@@ -523,14 +523,14 @@ help:
 	@echo "-------------------------------------------------------"
 	@echo " Examples"
 	@echo "-------------------------------------------------------"
-	@echo "  Ex. Run DeepCDE on M1 using seed=230:"
-	@echo "             make generate DATA_MODEL=M1 SEED=230 train-deepcde sample-deepcde eval-deepcde"
+	@echo "  Ex. Run DeepCDE on U1 using seed=230:"
+	@echo "             make generate DATA_MODEL=U1 SEED=230 train-deepcde sample-deepcde eval-deepcde"
 	@echo ""
-	@echo "  Ex. Run DeepCDE on M1 using 10 different random seeds:"
-	@echo "          make generate-all DATA_MODEL=M1 train-deepcde sample-deepcde eval-deepcde conclude-deepcde"
+	@echo "  Ex. Run DeepCDE on U1 using 10 different random seeds:"
+	@echo "          make generate-all DATA_MODEL=U1 train-deepcde sample-deepcde eval-deepcde conclude-deepcde"
 	@echo "      or"
 	@echo "          for s in 230 460 690 920 1150 1380 1610 1840 2070 2300; do"
-	@echo "            make generate DATA_MODEL=M1 SEED=$s train-deepcde sample-deepcde eval-deepcde || exit 1"
+	@echo "            make generate DATA_MODEL=U1 SEED=$s train-deepcde sample-deepcde eval-deepcde || exit 1"
 	@echo "          done"
-	@echo "          make conclude-deepcde DATA_MODEL=M1"
+	@echo "          make conclude-deepcde DATA_MODEL=U1"
 	@echo ""

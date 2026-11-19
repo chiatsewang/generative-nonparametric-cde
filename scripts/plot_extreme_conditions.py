@@ -166,7 +166,7 @@ if __name__ == "__main__":
         "--data-name",
         type=str,
         required=True,
-        help="Synthetic data model (e.g., M1, M2, ZhouM1)",
+        help="Synthetic data model (e.g., U1, U5, M2)",
     )
     parser.add_argument(
         "--workspace-dir",
