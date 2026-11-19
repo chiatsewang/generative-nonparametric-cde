@@ -9,6 +9,7 @@
 		train-flex-single sample-flex-single train-flex sample-flex \
 		conclude-single conclude \
 		conclude-ddpm conclude-gcds conclude-hyalg conclude-hy conclude-deepcde conclude-flex \
+		train-srm-single sample-srm-single train-srm sample-srm eval-srm conclude-srm \
 
 # === General Python call with local imports ===
 PYTHON := PYTHONPATH=. python
@@ -70,6 +71,7 @@ GCDS_TARGET_MODELS    := $(filter $(GCDS_APPLY_MODELS),$(TARGET_MODELS))
 HY_TARGET_MODELS      := $(filter $(HY_APPLY_MODELS),$(TARGET_MODELS))
 DEEPCDE_TARGET_MODELS := $(filter $(DEEPCDE_APPLY_MODELS),$(TARGET_MODELS))
 FLEX_TARGET_MODELS    := $(filter $(FLEX_APPLY_MODELS),$(TARGET_MODELS))
+SRM_TARGET_MODELS     := $(filter $(SRM_APPLY_MODELS),$(TARGET_MODELS))
 
 
 #
@@ -466,6 +468,61 @@ sample-flex:
 	@$(FLEX_SAMPLE_ALL_CMD) echo "All FlexCode Sampling Completed!"
 
 
+# =====================
+#    SRM training
+# =====================
+TRAIN_SRM_SCRIPT = scripts.train_srm
+# SRM_BATCH ?= 128  (.py default: training and sampling)
+SRM_BATCH ?= 64
+SRM_TRAIN_SAMPLES ?= 30
+SRM_EPOCHS ?= 500
+SRM_LR ?= 1e-4
+SRM_PATIENCE ?= 50
+SRM_HIDDEN_DIMS ?= 1024,512,256
+SRM_EARLY_STOP ?= --early-stop
+
+# ---- single run ----
+train-srm-single:
+	$(PYTHON) -m $(TRAIN_SRM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+		--batch-size $(SRM_BATCH) \
+		--epochs $(SRM_EPOCHS) \
+		--lr $(SRM_LR) \
+		--hidden-dims $(SRM_HIDDEN_DIMS) \
+		--sampling-size-for-training $(SRM_TRAIN_SAMPLES) \
+		--patience $(SRM_PATIENCE) \
+		$(SRM_EARLY_STOP)
+
+# ---- all runs ----
+SRM_TRAIN_ALL_CMD := \
+	$(foreach m,$(SRM_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) train-srm-single DATA_MODEL=$(m) SEED=$(s) && ))
+
+train-srm:
+	@$(SRM_TRAIN_ALL_CMD) echo "All SRM Training Completed!"
+
+
+# =====================
+#    SRM sampling
+# =====================
+SAMPLE_SRM_SCRIPT = scripts.sample_srm
+
+# ---- single run ----
+sample-srm-single:
+	$(PYTHON) -m $(SAMPLE_SRM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+		--num-samples $(SAMPLES) \
+		--batch-size $(SRM_BATCH)
+
+# ---- all runs ----
+SRM_SAMPLE_ALL_CMD := \
+	$(foreach m,$(SRM_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) sample-srm-single DATA_MODEL=$(m) SEED=$(s) && ))
+
+sample-srm:
+	@$(SRM_SAMPLE_ALL_CMD) echo "All SRM Sampling Completed!"
+
+
 #=====================
 #	Evaluation
 # =====================
@@ -502,6 +559,9 @@ eval-flex:
 eval-deepcde:
 	$(MAKE) eval ALGO=deepcde DATA_MODEL="$(DEEPCDE_TARGET_MODELS)"
 
+eval-srm:
+	$(MAKE) eval ALGO=srm DATA_MODEL="$(SRM_TARGET_MODELS)"
+
 # ---- all runs ----
 # Use shell loops rather than expanding every algorithm/model/seed combination
 # into one enormous command line. This avoids the OS "argument list too long"
@@ -516,6 +576,7 @@ eval:
 			hy)      models="$(HY_TARGET_MODELS)" ;; \
 			flex)    models="$(FLEX_TARGET_MODELS)" ;; \
 			deepcde) models="$(DEEPCDE_TARGET_MODELS)" ;; \
+			srm)     models="$(SRM_TARGET_MODELS)" ;; \
 			*) echo "Unknown ALGO=$$algo"; exit 1 ;; \
 		esac; \
 		if [ -z "$$models" ]; then \
@@ -575,6 +636,9 @@ conclude-flex:
 
 conclude-deepcde:
 	$(MAKE) conclude ALGO=deepcde
+
+conclude-srm:
+	$(MAKE) conclude ALGO=srm
 
 
 
