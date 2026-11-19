@@ -1,13 +1,11 @@
 # scripts/sample_ctmtf.py
 import argparse
 import subprocess
-import sys
 from pathlib import Path
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
 
 
 def get_y_dim(npz_path: Path) -> int:

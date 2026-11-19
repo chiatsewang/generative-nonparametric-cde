@@ -2,7 +2,6 @@
 import argparse
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -10,7 +9,6 @@ import numpy as np
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
 
 
 def get_y_dim(npz_path: Path) -> int:
