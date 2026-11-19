@@ -4,9 +4,12 @@ import time
 
 import numpy as np
 
-from .fit import fit_thetas
-from .loss import HallYaoLoss
-from .sampler import PreparedConditionalSampler, response_grid
+from condgen_benchmark.methods.hy.fit import fit_thetas
+from condgen_benchmark.methods.hy.loss import HallYaoLoss
+from condgen_benchmark.methods.hy.sampler import (
+    PreparedConditionalSampler,
+    response_grid,
+)
 
 
 def bandwidth_grid():
