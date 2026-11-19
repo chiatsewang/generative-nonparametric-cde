@@ -1,16 +1,47 @@
-.PHONY: all U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4 clean help \
-		generate generate-all \
-		eval eval-all \
-        train-ddpm-single train-ddpm sample-ddpm-single sample-ddpm \
-		train-gcds-single sample-gcds-single train-gcds sample-gcds \
-		train-hy-single sample-hy-single train-hy sample-hy \
-		train-deepcde-single sample-deepcde-single train-deepcde sample-deepcde \
-		train-flex-single sample-flex-single train-flex sample-flex \
-		train-drf-single sample-drf-single train-drf sample-drf \
-		train-ctmtf-single train-ctmtf sample-ctmtf-single sample-ctmtf \
-		conclude \
-		conclude-ddpm conclude-gcds conclude-hy conclude-deepcde conclude-flex conclude-ctmtf conclude-drf \
-		train-srm-single sample-srm-single train-srm sample-srm eval-srm conclude-srm \
+.PHONY: all U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4 clean help
+.PHONY: generate generate-all
+.PHONY: eval eval-single
+.PHONY: eval-ddpm eval-gcds eval-hy eval-deepcde eval-flex eval-srm eval-ctmtf eval-drf
+
+# The *-single targets are internal helper targets
+# and are not intended to be called directly by users.
+
+# DDPM
+.PHONY: train-ddpm-single train-ddpm
+.PHONY: sample-ddpm-single sample-ddpm
+
+# GCDS
+.PHONY: train-gcds-single train-gcds
+.PHONY: sample-gcds-single sample-gcds
+
+# HY (new implementation)
+.PHONY: train-hy-single train-hy
+.PHONY: sample-hy-single sample-hy
+
+# DeepCDE
+.PHONY: train-deepcde-single train-deepcde
+.PHONY: sample-deepcde-single sample-deepcde
+
+# FlexCode
+.PHONY: train-flex-single train-flex
+.PHONY: sample-flex-single sample-flex
+
+# SRM
+.PHONY: train-srm-single train-srm
+.PHONY: sample-srm-single sample-srm
+
+
+# CTMTF
+.PHONY: train-ctmtf-single train-ctmtf
+.PHONY: sample-ctmtf-single sample-ctmtf
+
+# DRF
+.PHONY: train-drf-single train-drf
+.PHONY: sample-drf-single sample-drf
+
+# Conclusion
+.PHONY: conclude
+.PHONY: conclude-ddpm conclude-gcds conclude-hy conclude-deepcde conclude-flex conclude-srm conclude-ctmtf conclude-drf
 
 # === General Python call with local imports ===
 PYTHON := PYTHONPATH=. python
@@ -22,16 +53,24 @@ PYTHON := PYTHONPATH=. python
 include skip_rules.mk
 
 # REPEATED RUN SETTING: SEEDS
-ALL_SEEDS := 230 460 690 920 1150 1380 1610 1840 2070 2300
+ALL_SEEDS := 230 460 690 920 1150 1380 1610 1840 2070 2300 2530 2760 2990 3220 3450 3680 3910 4140 4370 4600 4830 5060 5290 5520 5750 5980 6210 6440 6670 6900 7130 7360 7590 7820 8050 8280 8510 8740 8970 9200 9430 9660 9890 10120 10350 10580 10810 11040 11270 11500
+
 
 # === DEFAULT VALUE FOR TRAINING and VALIDATION and TEST SAMPLE SIZE ===
-TRAIN  ?= 5000
-VALID  ?= 2000
-TEST   ?= 2000
+# Original settings:
+# TRAIN  ?= 5000  (.py default)
+# VALID  ?= 2000  (.py default)
+# TEST   ?= 2000  (.py default)
+# ORACLE ?= 1000  (.py default)
+TRAIN  ?= 1000
+VALID  ?= 300
+TEST   ?= 500
 ORACLE ?= 500 # Number of samples used to compute ES_oracle
 
 # === SAMPLING SIZE ===
-SAMPLES ?= 2000
+# Original setting:
+# SAMPLES ?= 2000  (.py default)
+SAMPLES ?= 300
 
 # === Default DATA_MODEL & SEED & ALGO ===
 # ALGO is used for evaluation
@@ -104,7 +143,8 @@ clean:
 # =====================
 TRAIN_DDPM_SCRIPT = scripts.train_ddpm
 DDPM_TIME_STEP ?= 300
-DDPM_BATCH  ?= 128
+# DDPM_BATCH ?= 128  (.py default: training and sampling)
+DDPM_BATCH  ?= 64
 DDPM_EPOCHS ?= 100
 DDPM_LR     ?= 1e-2
 DDPM_LR_DROP_FACTOR ?= 0.5
@@ -167,7 +207,8 @@ sample-ddpm:
 #    GCDS training
 # =====================
 TRAIN_GCDS_SCRIPT = scripts.train_gcds
-GCDS_BATCH ?= 128
+# GCDS_BATCH ?= 128  (.py default: training and sampling)
+GCDS_BATCH ?= 64
 GCDS_EPOCHS ?= 500
 GCDS_LR ?= 1e-4
 GCDS_HIDDEN_DIM ?= 50
@@ -285,7 +326,8 @@ sample-hy:
 # =====================
 
 TRAIN_DEEPCDE_SCRIPT = scripts.train_deepcde
-DEEPCDE_BATCH ?= 128
+# DEEPCDE_BATCH ?= 128  (.py default: training and sampling)
+DEEPCDE_BATCH ?= 64
 DEEPCDE_EPOCHS ?= 500
 DEEPCDE_LR ?= 1e-4
 DEEPCDE_HIDDEN_DIMS ?= 32,64,32
@@ -412,6 +454,7 @@ sample-flex:
 	@$(FLEX_SAMPLE_ALL_CMD) echo "All FlexCode Sampling Completed!"
 
 
+
 # =====================
 #    SRM training
 # =====================
@@ -465,6 +508,8 @@ SRM_SAMPLE_ALL_CMD := \
 
 sample-srm:
 	@$(SRM_SAMPLE_ALL_CMD) echo "All SRM Sampling Completed!"
+
+
 
 
 # =====================
@@ -588,8 +633,10 @@ eval-deepcde:
 
 eval-srm:
 	$(MAKE) eval ALGO=srm DATA_MODEL="$(SRM_TARGET_MODELS)"
+
 eval-ctmtf:
 	$(MAKE) eval ALGO=ctmtf DATA_MODEL="$(CTMTF_TARGET_MODELS)"
+
 eval-drf:
 	$(MAKE) eval ALGO=drf DATA_MODEL="$(DRF_TARGET_MODELS)"
 
@@ -622,6 +669,7 @@ eval:
 		done; \
 	done; \
 	echo "All Evaluation Tasks Completed!"
+
 
 
 
@@ -664,11 +712,12 @@ conclude-deepcde:
 
 conclude-srm:
 	$(MAKE) conclude ALGO=srm
+
 conclude-ctmtf:
 	$(MAKE) conclude ALGO=ctmtf
+
 conclude-drf:
 	$(MAKE) conclude ALGO=drf
-
 
 
 
@@ -676,7 +725,7 @@ conclude-drf:
 help:
 	@echo ""
 	@echo "======================================================="
-	@echo "   Synthetic Data Pipeline (DDPM, Flex, GCDS, DeepCDE, HyAlg, HY)"
+	@echo "   Synthetic Data Pipeline (DDPM, GCDS, HY, DeepCDE, Flex, SRM, CTMTF, DRF)"
 	@echo "======================================================="
 	@echo ""
 	@echo "Usage:"
@@ -690,15 +739,15 @@ help:
 	@echo "  train-[algo]       : Train models for target model-seed combinations (can specify DATA_MODEL and SEED)"
 	@echo "  sample-[algo]      : Generate samples for target model-seed combinations (can specify DATA_MODEL and SEED)"
 	@echo "  eval-[algo]        : Evaluate results for target model-seed combinations (can specify DATA_MODEL and SEED)"
-	@echo "  conclude-[algo]    : Summarize simulation results for target models (can specify DATA_MODEL)"
+	@echo "  conclude           : Aggregate eval results into one xlsx (can specify ALGO and/or DATA_MODEL)"
 	@echo "  clean              : Remove dataset directories"
 	@echo ""
 	@echo "-------------------------------------------------------"
 	@echo " 2. Control Variables"
 	@echo "-------------------------------------------------------"
-	@echo "  DATA_MODEL         : Target Model (U1..U7, M1..M4). Default: All"
+	@echo "  DATA_MODEL         : Target Model (U1..U7 or M1..M4). Default: All"
 	@echo "  SEED               : Target Seed (230..). Default: All"
-	@echo "  ALGO               : Target Algo (for eval). Default: All"
+	@echo "  ALGO               : Target Algo (for eval/conclude). Default: All"
 	@echo ""
 	@echo "-------------------------------------------------------"
 	@echo " 3. Hyperparameters & Settings"
@@ -707,7 +756,7 @@ help:
 	@echo "  are defined as variables in this Makefile."
 	@echo ""
 	@echo "  Please check the Makefile directly to view or override defaults."
-	@echo "  (e.g., DDPM_EPOCHS, GCDS_LR, HYALG_RADIUS...)"
+	@echo "  (e.g., DDPM_EPOCHS, GCDS_LR, HY_RADIUS...)"
 	@echo ""
 	@echo "-------------------------------------------------------"
 	@echo " Examples"
@@ -722,4 +771,10 @@ help:
 	@echo "            make generate DATA_MODEL=U1 SEED=$s train-deepcde sample-deepcde eval-deepcde || exit 1"
 	@echo "          done"
 	@echo "          make conclude-deepcde DATA_MODEL=U1"
+	@echo ""
+	@echo "  Ex. Aggregate evaluation results into Excel:"
+	@echo "          make conclude                         # workspaces/all.xlsx"
+	@echo "          make conclude ALGO=ddpm               # workspaces/ddpm.xlsx"
+	@echo "          make conclude DATA_MODEL=U1           # workspaces/U1.xlsx"
+	@echo "          make conclude ALGO=ddpm DATA_MODEL=U1 # workspaces/ddpm_U1.xlsx"
 	@echo ""
