@@ -353,6 +353,7 @@ TRAIN_FLEX_SCRIPT = scripts.train_flex
 FLEX_BASIS ?= cosine
 FLEX_MAX_BASIS ?= 31
 FLEX_REG_METHOD ?= rf
+FLEX_NUM_Y_GRID ?= 200
 
 # --- single run ---
 train-flex-single:
@@ -360,7 +361,8 @@ ifneq ($(filter $(DATA_MODEL),$(FLEX_APPLY_MODELS)),)
 	$(PYTHON) -m $(TRAIN_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--basis $(FLEX_BASIS) \
 		--max-basis $(FLEX_MAX_BASIS) \
-		--reg $(FLEX_REG_METHOD)
+		--reg $(FLEX_REG_METHOD) \
+		--ny $(FLEX_NUM_Y_GRID)
 else
 	@echo "FlexCode is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
@@ -381,14 +383,12 @@ train-flex:
 
 SAMPLE_FLEX_SCRIPT = scripts.sample_flex
 FLEX_TUNED_MODEL ?= --tuned-model
-FLEX_NUM_Y_GRID ?= 200
 
 # --- single run ---
 sample-flex-single:
 ifneq ($(filter $(DATA_MODEL),$(FLEX_APPLY_MODELS)),)
 	$(PYTHON) -m $(SAMPLE_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--num-samples $(SAMPLES) \
-		--ny $(FLEX_NUM_Y_GRID) \
 		$(FLEX_TUNED_MODEL)
 else
 	@echo "FlexCode is not applied to DATA_MODEL=$(DATA_MODEL)"
