@@ -1,5 +1,4 @@
-.PHONY: install-r
-.PHONY: all U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4 clean help
+.PHONY: all U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4 clean help install-r
 .PHONY: generate generate-all
 .PHONY: eval eval-single
 .PHONY: eval-ddpm eval-gcds eval-hy eval-deepcde eval-flex eval-srm eval-ctmtf eval-drf
