@@ -105,6 +105,8 @@ DDPM_LR_DROP_PERIOD ?= 10
 DDPM_HIDDEN_DIMS ?= 1024,512,256
 DDPM_EARLY_STOP ?= --early-stop
 DDPM_PATIENCE ?= 20
+# Python default: normalization OFF; Make enables it via this flag.
+DDPM_NORMALIZATION ?= --normalization
 
 # ---- single run ----
 train-ddpm-single:
@@ -118,7 +120,7 @@ train-ddpm-single:
 		--lr-drop-period $(DDPM_LR_DROP_PERIOD) \
 		--patience $(DDPM_PATIENCE) \
 		$(DDPM_EARLY_STOP) \
-		--normalization
+		$(DDPM_NORMALIZATION)
 
 # ---- all runs ----
 DDPM_TRAIN_ALL_CMD := \
