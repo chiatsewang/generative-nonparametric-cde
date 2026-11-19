@@ -162,7 +162,7 @@ if __name__ == "__main__":
         "--algorithm",
         type=str,
         default="ddpm",
-        help="Algorithm name (e.g., ddpm, hyalg)",
+        help="Algorithm name (e.g., ddpm, hy)",
     )
     args = parser.parse_args()
     main(args)

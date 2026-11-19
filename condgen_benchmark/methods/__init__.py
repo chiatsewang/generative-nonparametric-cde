@@ -8,5 +8,4 @@ __all__ = [
     "deepcde",
     "gcds",
     "hy",
-    "hyalg",
 ]

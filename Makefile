@@ -3,14 +3,13 @@
 		eval eval-all \
         train-ddpm-single train-ddpm sample-ddpm-single sample-ddpm \
 		train-gcds-single sample-gcds-single train-gcds sample-gcds \
-		train-hyalg-single sample-hyalg-single train-hyalg sample-hyalg \
 		train-hy-single sample-hy-single train-hy sample-hy \
 		train-deepcde-single sample-deepcde-single train-deepcde sample-deepcde \
 		train-flex-single sample-flex-single train-flex sample-flex \
 		train-drf-single sample-drf-single train-drf sample-drf \
 		train-ctmtf-single train-ctmtf sample-ctmtf-single sample-ctmtf \
 		conclude-single conclude \
-		conclude-ddpm conclude-gcds conclude-hyalg conclude-hy conclude-deepcde conclude-flex conclude-ctmtf conclude-drf \
+		conclude-ddpm conclude-gcds conclude-hy conclude-deepcde conclude-flex conclude-ctmtf conclude-drf \
 		train-srm-single sample-srm-single train-srm sample-srm eval-srm conclude-srm \
 
 # === General Python call with local imports ===
@@ -216,66 +215,6 @@ GCDS_SAMPLE_ALL_CMD := \
 
 sample-gcds:
 	@$(GCDS_SAMPLE_ALL_CMD) echo "All GCDS Sampling Completed!"
-
-
-
-
-# =====================
-#    HYALG training
-# =====================
-
-TRAIN_HYALG_SCRIPT = scripts.train_hyalg
-HYALG_RADIUS ?= 1.0
-HYALG_TRAIN_H = 0.7
-
-# --- single run ---
-train-hyalg-single:
-ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
-	$(PYTHON) -m $(TRAIN_HYALG_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
-		--radius $(HYALG_RADIUS) \
-		--h $(HYALG_TRAIN_H)
-else
-	@echo "HyAlg is not applied to DATA_MODEL=$(DATA_MODEL)"
-endif
-
-# --- all runs ---
-HYALG_TRAIN_ALL_CMD := \
-	$(foreach m,$(HY_TARGET_MODELS), \
-		$(foreach s,$(TARGET_SEEDS), \
-			$(MAKE) train-hyalg-single DATA_MODEL=$(m) SEED=$(s) && ))
-
-train-hyalg:
-	@$(HYALG_TRAIN_ALL_CMD) echo "All HYALG Training Completed!"
-
-
-
-# =====================
-#    HYALG sampling
-# =====================
-
-SAMPLE_HYALG_SCRIPT = scripts.sample_hyalg
-HYALG_SAMPLE_H ?= 0.8
-HYALG_Y_GRID ?= 200
-
-# --- single run ---
-sample-hyalg-single:
-ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
-	$(PYTHON) -m $(SAMPLE_HYALG_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
-		--num-samples $(SAMPLES) \
-		--H $(HYALG_SAMPLE_H) \
-		--ygrid $(HYALG_Y_GRID)
-else
-	@echo "HyAlg is not applied to DATA_MODEL=$(DATA_MODEL)"
-endif
-
-# --- all runs ---
-HYALG_SAMPLE_ALL_CMD := \
-	$(foreach m,$(HY_TARGET_MODELS), \
-		$(foreach s,$(TARGET_SEEDS), \
-			$(MAKE) sample-hyalg-single DATA_MODEL=$(m) SEED=$(s) && ))
-
-sample-hyalg:
-	@$(HYALG_SAMPLE_ALL_CMD) echo "All HYALG Sampling Completed!"
 
 
 
@@ -634,9 +573,6 @@ endif
 eval-ddpm:
 	$(MAKE) eval ALGO=ddpm DATA_MODEL="$(DDPM_TARGET_MODELS)"
 
-eval-hyalg:
-	$(MAKE) eval ALGO=hyalg DATA_MODEL="$(HY_TARGET_MODELS)"
-
 eval-hy:
 	$(MAKE) eval ALGO=hy DATA_MODEL="$(HY_TARGET_MODELS)"
 
@@ -666,7 +602,6 @@ eval:
 		case "$$algo" in \
 			ddpm)    models="$(DDPM_TARGET_MODELS)" ;; \
 			gcds)    models="$(GCDS_TARGET_MODELS)" ;; \
-			hyalg)   models="$(HY_TARGET_MODELS)" ;; \
 			hy)      models="$(HY_TARGET_MODELS)" ;; \
 			flex)    models="$(FLEX_TARGET_MODELS)" ;; \
 			deepcde) models="$(DEEPCDE_TARGET_MODELS)" ;; \
@@ -717,9 +652,6 @@ conclude:
 # ---- algorithm shortcuts ----
 conclude-ddpm:
 	$(MAKE) conclude ALGO=ddpm
-
-conclude-hyalg:
-	$(MAKE) conclude ALGO=hyalg
 
 conclude-hy:
 	$(MAKE) conclude ALGO=hy
