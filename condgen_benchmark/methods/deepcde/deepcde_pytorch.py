@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn as nn
 
-from .utils import normalize, remove_bumps
+from condgen_benchmark.methods.deepcde.utils import normalize, remove_bumps
 
 ### DEFINE CUSTOM LAYER
 
