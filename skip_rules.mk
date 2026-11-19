@@ -16,7 +16,7 @@ UNIVARIATE_MODELS := U1 U2 U3 U4 U5 U6 U7
 MULTIVARIATE_MODELS := M1 M2 M3 M4
 
 # Algorithms
-ALL_ALGOS := ddpm gcds hyalg hy flex deepcde srm ctmtf
+ALL_ALGOS := ddpm gcds hyalg hy flex deepcde srm ctmtf drf
 
 # Applicable models for each algorithm
 DDPM_APPLY_MODELS := $(ALL_MODELS)
@@ -26,3 +26,4 @@ FLEX_APPLY_MODELS := $(UNIVARIATE_MODELS)
 DEEPCDE_APPLY_MODELS := $(UNIVARIATE_MODELS)
 SRM_APPLY_MODELS := $(ALL_MODELS)
 CTMTF_APPLY_MODELS := $(UNIVARIATE_MODELS)
+DRF_APPLY_MODELS := $(ALL_MODELS)

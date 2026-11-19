@@ -7,9 +7,10 @@
 		train-hy-single sample-hy-single train-hy sample-hy \
 		train-deepcde-single sample-deepcde-single train-deepcde sample-deepcde \
 		train-flex-single sample-flex-single train-flex sample-flex \
+		train-drf-single sample-drf-single train-drf sample-drf \
 		train-ctmtf-single train-ctmtf sample-ctmtf-single sample-ctmtf \
 		conclude-single conclude \
-		conclude-ddpm conclude-gcds conclude-hyalg conclude-hy conclude-deepcde conclude-flex conclude-ctmtf \
+		conclude-ddpm conclude-gcds conclude-hyalg conclude-hy conclude-deepcde conclude-flex conclude-ctmtf conclude-drf \
 		train-srm-single sample-srm-single train-srm sample-srm eval-srm conclude-srm \
 
 # === General Python call with local imports ===
@@ -74,6 +75,7 @@ DEEPCDE_TARGET_MODELS := $(filter $(DEEPCDE_APPLY_MODELS),$(TARGET_MODELS))
 FLEX_TARGET_MODELS    := $(filter $(FLEX_APPLY_MODELS),$(TARGET_MODELS))
 SRM_TARGET_MODELS     := $(filter $(SRM_APPLY_MODELS),$(TARGET_MODELS))
 CTMTF_TARGET_MODELS   := $(filter $(CTMTF_APPLY_MODELS),$(TARGET_MODELS))
+DRF_TARGET_MODELS     := $(filter $(DRF_APPLY_MODELS),$(TARGET_MODELS))
 
 
 #
@@ -572,6 +574,45 @@ sample-ctmtf:
 	@$(CTMTF_SAMPLE_ALL_CMD) echo "All CTMTF Sampling Completed!"
 
 
+# =====================
+#    DRF training
+# =====================
+TRAIN_DRF_SCRIPT = scripts.train_drf
+
+# ---- single run ----
+train-drf-single:
+	$(PYTHON) -m $(TRAIN_DRF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED)
+
+# ---- all runs ----
+DRF_TRAIN_ALL_CMD := \
+	$(foreach m,$(DRF_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) train-drf-single DATA_MODEL=$(m) SEED=$(s) && ))
+
+train-drf:
+	@$(DRF_TRAIN_ALL_CMD) echo "All DRF Training Completed!"
+
+
+# =====================
+#    DRF sampling
+# =====================
+SAMPLE_DRF_SCRIPT = scripts.sample_drf
+
+# ---- single run ----
+sample-drf-single:
+	$(PYTHON) -m $(SAMPLE_DRF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+		--num-samples $(SAMPLES)
+
+# ---- all runs ----
+DRF_SAMPLE_ALL_CMD := \
+	$(foreach m,$(DRF_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) sample-drf-single DATA_MODEL=$(m) SEED=$(s) && ))
+
+sample-drf:
+	@$(DRF_SAMPLE_ALL_CMD) echo "All DRF Sampling Completed!"
+
+
 #=====================
 #	Evaluation
 # =====================
@@ -612,6 +653,8 @@ eval-srm:
 	$(MAKE) eval ALGO=srm DATA_MODEL="$(SRM_TARGET_MODELS)"
 eval-ctmtf:
 	$(MAKE) eval ALGO=ctmtf DATA_MODEL="$(CTMTF_TARGET_MODELS)"
+eval-drf:
+	$(MAKE) eval ALGO=drf DATA_MODEL="$(DRF_TARGET_MODELS)"
 
 # ---- all runs ----
 # Use shell loops rather than expanding every algorithm/model/seed combination
@@ -629,6 +672,7 @@ eval:
 			deepcde) models="$(DEEPCDE_TARGET_MODELS)" ;; \
 			srm)     models="$(SRM_TARGET_MODELS)" ;; \
 			ctmtf)   models="$(CTMTF_TARGET_MODELS)" ;; \
+			drf)     models="$(DRF_TARGET_MODELS)" ;; \
 			*) echo "Unknown ALGO=$$algo"; exit 1 ;; \
 		esac; \
 		if [ -z "$$models" ]; then \
@@ -693,6 +737,8 @@ conclude-srm:
 	$(MAKE) conclude ALGO=srm
 conclude-ctmtf:
 	$(MAKE) conclude ALGO=ctmtf
+conclude-drf:
+	$(MAKE) conclude ALGO=drf
 
 
 
