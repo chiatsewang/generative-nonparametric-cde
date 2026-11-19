@@ -17,8 +17,8 @@ def register_synthetic_data(name: str):
         name (str): The name to register the class under
 
     Example:
-        @register_synthetic_data("M1")
-        class M1Data(SyntheticData):
+        @register_synthetic_data("U1")
+        class U1Data(SyntheticData):
             pass
     """
 
@@ -29,10 +29,10 @@ def register_synthetic_data(name: str):
     return decorator
 
 
-@register_synthetic_data("M1")  # HY2 data
-class M1Data(SyntheticData):
+@register_synthetic_data("U1")  # HY2 data
+class U1Data(SyntheticData):
     def __init__(self, seed: int = 230):
-        """M1: Sinusoidal transformation with Gaussian noise"""
+        """U1: Sinusoidal transformation with Gaussian noise"""
         super().__init__(predictor_dim=4, response_dim=1, seed=seed)
         self.theta_true = np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float32)
         self.theta_true /= np.linalg.norm(self.theta_true)
@@ -57,74 +57,10 @@ class M1Data(SyntheticData):
         return mean, std
 
 
-@register_synthetic_data("M2")
-class M2Data(SyntheticData):
-    def __init__(self, seed: int = 230):
-        """
-        M2: 10D input but only first 4 dimensions matter (intrinsic dim test)
-        """
-        super().__init__(predictor_dim=10, response_dim=1, seed=seed)
-        self.theta_true = np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float32)
-        self.theta_true /= np.linalg.norm(self.theta_true)
-
-    def _forward(self, X: np.ndarray) -> np.ndarray:
-        r"""
-        .. math::
-
-            Y = \sin(X_{1:4}) \cdot \theta + \varepsilon
-
-        where:
-            - :math:`\theta = \frac{[0.5, 0.5, 0.5, 0.5]}{\|\cdot\|}`
-            - :math:`X \in \mathbb{R}^{10}` but only first 4 dimensions used
-            - :math:`\varepsilon \sim \mathcal{N}(0, 1)`
-        """
-        eps = np.random.randn(len(X))
-        return np.sin(X[:, :4]) @ self.theta_true + eps
-
-    def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        mean = np.sin(X[:, :4]) @ self.theta_true
-        std = np.ones_like(mean)
-        return mean, std
-
-
-@register_synthetic_data("M3")
-class M3Data(M1Data):
+@register_synthetic_data("U2")
+class U2Data(SyntheticData):
     """
-    M3: Same as M1, except predictors are correlated.
-    We use the transformation: X = Σ^(1/2) Z, where Z ~ N(0,I), so that X ~ N(0,Σ).
-    In M5, Σ has power decay correlation structure:
-    Σ_ij = rho^{|i-j|}, i,j=1,...,4, with 0 <= |rho| <= 1.
-    """
-
-    def __init__(self, seed: int = 230, rho: float = 0.5):
-        super().__init__(seed)
-        self.rho = rho
-        idx = np.arange(self.predictor_dim)
-        Sigma = self.rho ** np.abs(np.subtract.outer(idx, idx))
-        self.Sigma_sqrt = np.linalg.cholesky(Sigma)
-
-    def generate(self, n_samples: int, X: np.ndarray = None):
-        if X is None:
-            Z = np.random.randn(n_samples, self.predictor_dim)
-            X = Z @ self.Sigma_sqrt.T
-            X_rep = X
-        else:
-            X = np.atleast_2d(X)
-            X_rep = np.repeat(X, repeats=n_samples, axis=0)
-
-        Y = self._forward(X_rep)
-        return Y.reshape(-1, self.response_dim), X
-
-    def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        mean = np.sin(X) @ self.theta_true
-        std = np.ones_like(mean)
-        return mean, std
-
-
-@register_synthetic_data("M4")
-class M4Data(SyntheticData):
-    """
-    M4: multimodal conditional distribution (extends M1 by introducing latent sign variables Z_j)
+    U2: multimodal conditional distribution (extends U1 by introducing latent sign variables Z_j)
     Y = 0.5 * sum_{j=1}^4 sin(Z_j * X_j) + eps
     X_j ~ N(0,1) i.i.d.,  Z_j ∈{-1,+1}, Pr(Zj = 1) = Pr(Zj = −1) = 1/2,  eps ~ N(0,1).
     """
@@ -153,10 +89,10 @@ class M4Data(SyntheticData):
         return mean, std
 
 
-@register_synthetic_data("M5")
-class M5Data(SyntheticData):
+@register_synthetic_data("U3")
+class U3Data(SyntheticData):
     """
-    M5: multimodal conditional distribution with latent amplitude scalers Z_j ~ Uniform(0,1)
+    U3: multimodal conditional distribution with latent amplitude scalers Z_j ~ Uniform(0,1)
     Y = 0.5 * sum_{j=1}^4 sin(Z_j * X_j) + eps,
     X_j ~ N(0,1) i.i.d., Z_j ~ U(0,1) i.i.d., eps ~ N(0,1).
 
@@ -196,10 +132,10 @@ class M5Data(SyntheticData):
         return mean, std
 
 
-@register_synthetic_data("M6")  # ZhouM2Data
-class M6Data(SyntheticData):
+@register_synthetic_data("U4")  # ZhouM2Data
+class U4Data(SyntheticData):
     def __init__(self, seed: int = 230):
-        """M6: A model with heteroscedastic Gaussian noise"""
+        """U4: A model with heteroscedastic Gaussian noise"""
         super().__init__(predictor_dim=5, response_dim=1, seed=seed)
 
     def _forward(self, X: np.ndarray) -> np.ndarray:
@@ -229,11 +165,11 @@ class M6Data(SyntheticData):
         return mean, std
 
 
-@register_synthetic_data("M7")
-class M7Data(SyntheticData):
+@register_synthetic_data("U5")
+class U5Data(SyntheticData):
     def __init__(self, seed: int = 230, gamma: float = 0.5):
         """
-        M7: multiplicative noise with covariate-dependent mixture
+        U5: multiplicative noise with covariate-dependent mixture
 
         Y = m(X) * exp(0.25 * eps)
 
@@ -247,7 +183,7 @@ class M7Data(SyntheticData):
 
     def _forward(self, X: np.ndarray) -> np.ndarray:
         """
-        Generate Y given X for the M7 model.
+        Generate Y given X for the U5 model.
         """
         n = X.shape[0]
 
@@ -271,7 +207,7 @@ class M7Data(SyntheticData):
 
     def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Analytical conditional mean and std of Y | X for M7.
+        Analytical conditional mean and std of Y | X for U5.
         """
         base = (
             5
@@ -302,10 +238,10 @@ class M7Data(SyntheticData):
         return mean, std
 
 
-@register_synthetic_data("M8")  # ZhouM3Data
-class M8Data(SyntheticData):
+@register_synthetic_data("U6")  # ZhouM3Data
+class U6Data(SyntheticData):
     def __init__(self, seed: int = 230):
-        """M8: A model with multiplicative non-Gaussian noise"""
+        """U6: A model with multiplicative non-Gaussian noise"""
         super().__init__(predictor_dim=30, response_dim=1, seed=seed)
 
     def _forward(self, X: np.ndarray) -> np.ndarray:
@@ -352,10 +288,10 @@ class M8Data(SyntheticData):
         return mean, std
 
 
-@register_synthetic_data("M9")
-class M9Data(SyntheticData):
+@register_synthetic_data("U7")
+class U7Data(SyntheticData):
     """
-    M9: Non-additive noise via sine transformation, with exponential link
+    U7: Non-additive noise via sine transformation, with exponential link
 
         X ~ N(0,1), eps ~ N(0,1) independent
         T = c X + eps
@@ -390,7 +326,7 @@ class M9Data(SyntheticData):
 
     def _forward(self, X: np.ndarray) -> np.ndarray:
         """
-        Generate Y given X for the M9 model.
+        Generate Y given X for the U7 model.
 
         X: shape [n, 1] or [n]
         return Y: shape [n]
@@ -410,7 +346,7 @@ class M9Data(SyntheticData):
 
     def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Analytic conditional mean and std of Y | X for M9 with g(u) = exp(u),
+        Analytic conditional mean and std of Y | X for U7 with g(u) = exp(u),
         using truncated Bessel-series expansions.
 
         T | X=x ~ N(mu, 1), mu = c x
@@ -444,10 +380,10 @@ class M9Data(SyntheticData):
         return m1, std
 
 
-@register_synthetic_data("M10")
-class M10Data(SyntheticData):
+@register_synthetic_data("M1")
+class M1Data(SyntheticData):
     def __init__(self, seed: int = 230):
-        """M10: Multivariate output model with 5D input and 7D output"""
+        """M1: Multivariate output model with 5D input and 7D output"""
         super().__init__(predictor_dim=5, response_dim=7, seed=seed)
 
     def _forward(self, X: np.ndarray) -> np.ndarray:
@@ -494,6 +430,326 @@ class M10Data(SyntheticData):
         mean[:, 6] = np.sin(X[:, 3] + X[:, 4])
 
         std = np.ones((n, 7))
+        return mean, std
+
+
+@register_synthetic_data("M2")
+class M2Data(SyntheticData):
+    """
+    M2: a five-dimensional Gaussian response with
+    covariate-dependent equicorrelation.
+
+    X ~ Uniform(0, 1)^30,
+    Y | X ~ N_5(0, Sigma(X)),
+    where Sigma(X) has unit diagonal and all off-diagonal entries equal to X1.
+    """
+
+    def __init__(self, seed: int = 230):
+        super().__init__(predictor_dim=30, response_dim=5, seed=seed)
+
+    def generate(self, n_samples: int, X: np.ndarray = None):
+        if X is None:
+            X = np.random.rand(n_samples, self.predictor_dim)
+            X_rep = X
+        else:
+            X = np.atleast_2d(X)
+            assert (
+                X.shape[1] == self.predictor_dim
+            ), f"X must have shape (*, {self.predictor_dim}), but got {X.shape}"
+            X_rep = np.repeat(X, repeats=n_samples, axis=0)
+
+        Y = self._forward(X_rep)
+        return Y.reshape(-1, self.response_dim), X
+
+    def _forward(self, X: np.ndarray) -> np.ndarray:
+        n = X.shape[0]
+        rho = X[:, 0]
+
+        common_noise = np.random.randn(n, 1)
+        idiosyncratic_noise = np.random.randn(n, self.response_dim)
+        return (
+            np.sqrt(rho)[:, None] * common_noise
+            + np.sqrt(1.0 - rho)[:, None] * idiosyncratic_noise
+        )
+
+    def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        n = X.shape[0]
+        mean = np.zeros((n, self.response_dim))
+        std = np.ones((n, self.response_dim))
+        return mean, std
+
+
+@register_synthetic_data("M3")
+class M3Data(SyntheticData):
+    """
+    M3: multivariate extension of U5 with a
+    covariate-dependent Gaussian-mixture error distribution.
+
+    Y = m(X) * exp(0.25 * eps),
+
+    where multiplication and exp(.) are applied componentwise,
+    m1(X) = 5 + X1^2 / 3 + X2^2 + X3^2 / 2 + 0.5 * tanh(X4) + 0.5 * sin(X5),
+    m2(X) = 5 + X1^2 / 2 + X2^2 / 3 + X3^2 + 0.5 * sin(X4) - 0.5 * tanh(X5),
+    eps | X1 ~ pi(X1) N2(-mu, Sigma_eps) + {1 - pi(X1)} N2(mu, Sigma_eps),
+    mu = (1, -1)^T,
+    Sigma_eps = [[1.0, 0.5], [0.5, 1.0]],
+    and pi(x) = logit^{-1}(gamma x) for a fixed gamma > 0.
+    """
+
+    def __init__(self, seed: int = 230, gamma: float = 0.5):
+        super().__init__(predictor_dim=30, response_dim=2, seed=seed)
+        self.gamma = gamma
+        self.mu = np.array([1.0, -1.0])
+        self.sigma_eps = np.array(
+            [
+                [1.0, 0.5],
+                [0.5, 1.0],
+            ]
+        )
+
+    def _location(self, X: np.ndarray) -> np.ndarray:
+        m1 = (
+            5.0
+            + X[:, 0] ** 2 / 3.0
+            + X[:, 1] ** 2
+            + X[:, 2] ** 2 / 2.0
+            + 0.5 * np.tanh(X[:, 3])
+            + 0.5 * np.sin(X[:, 4])
+        )
+
+        m2 = (
+            5.0
+            + X[:, 0] ** 2 / 2.0
+            + X[:, 1] ** 2 / 3.0
+            + X[:, 2] ** 2
+            + 0.5 * np.sin(X[:, 3])
+            - 0.5 * np.tanh(X[:, 4])
+        )
+
+        return np.column_stack((m1, m2))
+
+    def _forward(self, X: np.ndarray) -> np.ndarray:
+        n = X.shape[0]
+        base = self._location(X)
+
+        print(f"gamma = {self.gamma}")
+        logits = self.gamma * X[:, 0]
+        pi = 1.0 / (1.0 + np.exp(-logits))
+
+        component_negative = np.random.rand(n) < pi
+        component_means = np.where(
+            component_negative[:, None],
+            -self.mu[None, :],
+            self.mu[None, :],
+        )
+
+        gaussian_noise = np.random.multivariate_normal(
+            mean=np.zeros(2), cov=self.sigma_eps, size=n
+        )
+
+        eps = component_means + gaussian_noise
+        return base * np.exp(0.25 * eps)
+
+    def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        base = self._location(X)
+        logits = self.gamma * X[:, 0]
+        pi = 1.0 / (1.0 + np.exp(-logits))
+
+        a = 0.25
+        marginal_variances = np.diag(self.sigma_eps)
+
+        moment1_negative = np.exp(
+            -a * self.mu + 0.5 * a**2 * marginal_variances
+        )
+        moment1_positive = np.exp(
+            a * self.mu + 0.5 * a**2 * marginal_variances
+        )
+        exponential_mean = (
+            pi[:, None] * moment1_negative[None, :]
+            + (1.0 - pi[:, None]) * moment1_positive[None, :]
+        )
+
+        moment2_negative = np.exp(
+            -2.0 * a * self.mu + 0.5 * (2.0 * a) ** 2 * marginal_variances
+        )
+        moment2_positive = np.exp(
+            2.0 * a * self.mu + 0.5 * (2.0 * a) ** 2 * marginal_variances
+        )
+        exponential_second_moment = (
+            pi[:, None] * moment2_negative[None, :]
+            + (1.0 - pi[:, None]) * moment2_positive[None, :]
+        )
+
+        mean = base * exponential_mean
+        variance = base**2 * (exponential_second_moment - exponential_mean**2)
+        variance = np.maximum(variance, 0.0)
+        std = np.sqrt(variance)
+        return mean, std
+
+
+@register_synthetic_data("M4")
+class M4Data(SyntheticData):
+    r"""
+    M4: predictor-dependent eight-component Gaussian mixture in R^10.
+
+    X_j iid ~ Uniform(-1, 1), j = 1, ..., 5. Given X=x, a latent sign
+    vector S=(S1,S2,S3)^T in {-1,1}^3 selects one of eight Gaussian
+    mixture components. The predictor controls the component probabilities,
+    the overall location, and a common rotation of the component geometry.
+
+    The conditional distribution is
+
+        Y | X=x ~ sum_s pi_s(x) N_10(
+            m(x) + 2.5 Q(x) v(s),
+            Q(x) D Q(x)^T
+        ).
+    """
+
+    def __init__(self, seed: int = 230):
+        super().__init__(predictor_dim=5, response_dim=10, seed=seed)
+
+        self.states = np.array(
+            [
+                [s1, s2, s3]
+                for s1 in (-1.0, 1.0)
+                for s2 in (-1.0, 1.0)
+                for s3 in (-1.0, 1.0)
+            ],
+            dtype=float,
+        )
+
+        s1 = self.states[:, 0]
+        s2 = self.states[:, 1]
+        s3 = self.states[:, 2]
+        self.mode_directions = np.column_stack(
+            [
+                s1,
+                s2,
+                s3,
+                s1 * s2,
+                s2 * s3,
+                s1 * s3,
+                s1 * s2 * s3,
+                -s1,
+                -s2,
+                -s3,
+            ]
+        ) / np.sqrt(10.0)
+
+        self.D = np.kron(
+            np.eye(5),
+            np.diag([0.15**2, 0.35**2]),
+        )
+
+    def generate(self, n_samples: int, X: np.ndarray = None):
+        if X is None:
+            X = np.random.uniform(
+                -1.0, 1.0, size=(n_samples, self.predictor_dim)
+            )
+            X_rep = X
+        else:
+            X = np.atleast_2d(X)
+            assert (
+                X.shape[1] == self.predictor_dim
+            ), f"X must have shape (*, {self.predictor_dim}), but got {X.shape}"
+            X_rep = np.repeat(X, repeats=n_samples, axis=0)
+
+        Y = self._forward(X_rep)
+        return Y.reshape(-1, self.response_dim), X
+
+    def _component_probabilities(self, X: np.ndarray) -> np.ndarray:
+        """Return pi_s(X) for all eight latent sign states."""
+        s1 = self.states[:, 0][None, :]
+        s2 = self.states[:, 1][None, :]
+        s3 = self.states[:, 2][None, :]
+
+        alpha = 1.2 * (
+            X[:, 0, None] * s1 + X[:, 1, None] * s2 + X[:, 2, None] * s3
+        )
+        alpha += 0.6 * X[:, 3, None] * (s1 * s2 + s2 * s3)
+        alpha += 0.6 * X[:, 4, None] * (s1 * s3)
+
+        # Stable softmax over the eight components.
+        alpha = alpha - alpha.max(axis=1, keepdims=True)
+        exp_alpha = np.exp(alpha)
+        pi_tilde = exp_alpha / exp_alpha.sum(axis=1, keepdims=True)
+        return 0.8 * pi_tilde + 0.2 / 8.0
+
+    def _location(self, X: np.ndarray) -> np.ndarray:
+        m = np.zeros((X.shape[0], self.response_dim), dtype=float)
+        m[:, 0] = np.sin(np.pi * X[:, 0])
+        m[:, 1] = np.cos(np.pi * X[:, 0])
+        m[:, 2] = X[:, 1]
+        m[:, 3] = X[:, 1] ** 2
+        m[:, 4] = np.tanh(X[:, 2])
+        return m
+
+    def _rotation_matrices(self, X: np.ndarray) -> np.ndarray:
+        """Construct Q(x) = diag(R(theta_1), ..., R(theta_5))."""
+        n = X.shape[0]
+        Q = np.zeros((n, self.response_dim, self.response_dim), dtype=float)
+
+        for j in range(1, 6):
+            theta = (np.pi / 6.0) * (X[:, 3] + (j / 5.0) * X[:, 4])
+            c = np.cos(theta)
+            s = np.sin(theta)
+            k = 2 * (j - 1)
+            Q[:, k, k] = c
+            Q[:, k, k + 1] = -s
+            Q[:, k + 1, k] = s
+            Q[:, k + 1, k + 1] = c
+
+        return Q
+
+    def _forward(self, X: np.ndarray) -> np.ndarray:
+        n = X.shape[0]
+        pi = self._component_probabilities(X)
+        location = self._location(X)
+        Q = self._rotation_matrices(X)
+
+        u = np.random.rand(n)
+        cumulative = np.cumsum(pi, axis=1)
+        component = (u[:, None] > cumulative).sum(axis=1)
+        directions = self.mode_directions[component]
+
+        rotated_direction = np.einsum("nij,nj->ni", Q, directions)
+
+        # D^(1/2) has diagonal entries 0.15, 0.35 repeated five times.
+        d_sqrt = np.sqrt(np.diag(self.D))
+        eps = np.random.randn(n, self.response_dim)
+        within_component_noise = np.einsum(
+            "nij,nj->ni", Q, eps * d_sqrt[None, :]
+        )
+
+        return location + 2.5 * rotated_direction + within_component_noise
+
+    def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Analytical coordinatewise conditional mean and standard deviation."""
+        X = np.atleast_2d(X)
+        pi = self._component_probabilities(X)
+        location = self._location(X)
+        Q = self._rotation_matrices(X)
+
+        weighted_direction = pi @ self.mode_directions
+        rotated_mean_direction = np.einsum("nij,nj->ni", Q, weighted_direction)
+        mean = location + 2.5 * rotated_mean_direction
+
+        rotated_directions = np.einsum("nij,sj->nsi", Q, self.mode_directions)
+        component_offsets = 2.5 * rotated_directions
+        centered_offsets = (
+            component_offsets - 2.5 * rotated_mean_direction[:, None, :]
+        )
+        between_variance = np.sum(
+            pi[:, :, None] * centered_offsets**2,
+            axis=1,
+        )
+
+        # Diagonal of Q D Q^T for each x.
+        within_covariance = np.einsum("nij,jk,nlk->nil", Q, self.D, Q)
+        within_variance = np.diagonal(within_covariance, axis1=1, axis2=2)
+
+        variance = np.maximum(within_variance + between_variance, 0.0)
+        std = np.sqrt(variance)
         return mean, std
 
 

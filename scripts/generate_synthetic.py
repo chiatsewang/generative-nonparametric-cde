@@ -9,7 +9,7 @@ from condgen_benchmark.data.synthetic import get_synthetic_data_class
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            "Generate synthetic dataset (M1–M10) with fixed "
+            "Generate synthetic datasets (U1–U7 and M1–M4) with fixed "
             "train/valid/test sizes and save under seed-specific directories."
         )
     )
@@ -17,16 +17,17 @@ def parse_args():
         "--data-name",
         type=str,
         choices=[
+            "U1",
+            "U2",
+            "U3",
+            "U4",
+            "U5",
+            "U6",
+            "U7",
             "M1",
             "M2",
             "M3",
             "M4",
-            "M5",
-            "M6",
-            "M7",
-            "M8",
-            "M9",
-            "M10",
         ],
         required=True,
         help="Which synthetic data model to generate.",
@@ -60,12 +61,6 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--rho",
-        type=float,
-        default=None,
-        help="Optional data-generation parameter (currently used only in M3).",
-    )
-    parser.add_argument(
         "--gamma",
         type=float,
         default=None,
@@ -75,7 +70,7 @@ def parse_args():
         "--c",
         type=float,
         default=None,
-        help="Optional data-generation parameter (currently used only in M9).",
+        help="Optional data-generation parameter (currently used only in U7).",
     )
 
     return parser.parse_args()
@@ -89,7 +84,7 @@ def save_split(X, Y, out_dir, name):
 
 def main():
     """
-    Generate synthetic dataset and save train/valid/test splits in .npz format
+    Generate synthetic datasets and save train/valid/test splits in .npz format
     using the class-based SyntheticData interface.
     """
     args = parse_args()
@@ -99,7 +94,6 @@ def main():
     # Optional parameter
     allowed_args = [
         "seed",
-        "rho",
         "c",
         "gamma",
     ]  # if necessary, you can add other parameters

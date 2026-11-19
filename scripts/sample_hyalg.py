@@ -79,7 +79,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230)
-    parser.add_argument("--data-name", type=str, default="M1")
+    parser.add_argument("--data-name", type=str, default="U1")
     parser.add_argument("--H", type=float, default=0.8)
     parser.add_argument("--num-samples", type=int, default=2000)
     parser.add_argument("--ygrid", type=int, default=200)
