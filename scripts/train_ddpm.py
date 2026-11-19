@@ -9,9 +9,12 @@ import numpy as np
 import torch
 import yaml
 
-from condgen_benchmark.methods.ddpm.core import Diffusion
+from condgen_benchmark.methods.ddpm.diffusion import Diffusion
 from condgen_benchmark.methods.ddpm.loss import ddpm_loss
-from condgen_benchmark.models.conditional_mlp import ConditionalMLPScalarT
+from condgen_benchmark.methods.ddpm.model import (
+    ConditionalMLPScalarT,
+    parse_hidden_dims,
+)
 from condgen_benchmark.utils.gpu_batching import batch_indices
 
 
@@ -88,9 +91,15 @@ def main(args):
 
     Y_dim = Y_train.shape[1]
     X_dim = X_train.shape[1]
-    model = ConditionalMLPScalarT(X_dim, Y_dim, hidden_dim=args.hidden_dim).to(
-        device
-    )
+    hidden_dims = parse_hidden_dims(args.hidden_dims)
+    args.hidden_dims = hidden_dims
+    print(f"[DDPM] hidden_dims={hidden_dims}")
+
+    model = ConditionalMLPScalarT(
+        X_dim,
+        Y_dim,
+        hidden_dims=hidden_dims,
+    ).to(device)
     diffusion = Diffusion(timesteps=args.timesteps, device=device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -239,13 +248,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--patience",
         type=int,
-        default=5,
+        default=20,
         help="Number of epochs with no improvement to tolerate before early stopping",
     )
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--timesteps", type=int, default=300)
-    parser.add_argument("--epochs", type=int, default=50)
-    parser.add_argument("--hidden-dim", type=int, default=50)
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument(
+        "--hidden-dims",
+        type=str,
+        default="1024,512,256",
+        help="Comma-separated hidden layer sizes, e.g. 1024,512,256.",
+    )
     parser.add_argument("--lr", type=float, default=1e-2)
     parser.add_argument("--lr-drop-factor", type=float, default=0.5)
     parser.add_argument("--lr-drop-period", type=int, default=10)

@@ -98,11 +98,15 @@ clean:
 TRAIN_DDPM_SCRIPT = scripts.train_ddpm
 DDPM_TIME_STEP ?= 300
 DDPM_BATCH  ?= 128
-DDPM_EPOCHS ?= 50
+DDPM_EPOCHS ?= 100
 DDPM_LR     ?= 1e-2
 DDPM_LR_DROP_FACTOR ?= 0.5
 DDPM_LR_DROP_PERIOD ?= 10
-DDPM_HIDDEN_DIM ?= 50
+DDPM_HIDDEN_DIMS ?= 1024,512,256
+DDPM_EARLY_STOP ?= --early-stop
+DDPM_PATIENCE ?= 20
+# Python default: normalization OFF; Make enables it via this flag.
+DDPM_NORMALIZATION ?= --normalization
 
 # ---- single run ----
 train-ddpm-single:
@@ -110,11 +114,13 @@ train-ddpm-single:
 		--timesteps $(DDPM_TIME_STEP) \
 		--batch-size $(DDPM_BATCH) \
 		--epochs $(DDPM_EPOCHS) \
-		--hidden-dim $(DDPM_HIDDEN_DIM) \
+		--hidden-dims $(DDPM_HIDDEN_DIMS) \
 		--lr $(DDPM_LR) \
 		--lr-drop-factor $(DDPM_LR_DROP_FACTOR) \
 		--lr-drop-period $(DDPM_LR_DROP_PERIOD) \
-		--normalization
+		--patience $(DDPM_PATIENCE) \
+		$(DDPM_EARLY_STOP) \
+		$(DDPM_NORMALIZATION)
 
 # ---- all runs ----
 DDPM_TRAIN_ALL_CMD := \
@@ -135,10 +141,8 @@ DDPM_MODEL_CHOICE ?= best
 # ---- single run ----
 sample-ddpm-single:
 	$(PYTHON) -m $(SAMPLE_DDPM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
-		--timesteps $(DDPM_TIME_STEP) \
 		--num-samples $(SAMPLES) \
 		--batch-size $(DDPM_BATCH) \
-		--hidden-dim $(DDPM_HIDDEN_DIM) \
 		--model-choice $(DDPM_MODEL_CHOICE)
 
 # ---- all runs ----
