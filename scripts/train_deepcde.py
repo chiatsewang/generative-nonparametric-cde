@@ -9,38 +9,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import yaml
-from torch.utils.data import DataLoader, TensorDataset
 
 from condgen_benchmark.methods.deepcde.bases.cosine import CosineBasis
 from condgen_benchmark.methods.deepcde.bases.wavelet import WaveletBasis
 from condgen_benchmark.methods.deepcde.deepcde_pytorch import cde_loss
 from condgen_benchmark.methods.deepcde.models import DeepCDEModel
 from condgen_benchmark.methods.deepcde.utils import box_transform
+from condgen_benchmark.utils.gpu_batching import batch_indices
 
 matplotlib.use("Agg")
 
 
 @torch.no_grad()
-def evaluate(model, loader, criterion, device):
+def evaluate(model, X, Y_basis, criterion, batch_size):
     model.eval()
-    total_loss = 0.0
-    n_batches = 0
-    for xb, yb in loader:
-        xb = xb.to(device)
-        yb = yb.to(device)
+    device = X.device
+    n = X.shape[0]
+    total_loss = torch.zeros((), device=device)
+    for idx in batch_indices(n, batch_size, device, shuffle=False):
+        xb = X[idx]
+        yb = Y_basis[idx]
         beta = model(xb)
         loss = criterion(beta, yb)
-        total_loss += loss.item()
-        n_batches += 1
-    return total_loss / max(1, n_batches)
+        total_loss += loss.detach() * xb.shape[0]
+    return (total_loss / n).item()
 
 
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    device = torch.device(
-        "cpu"
-    )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.benchmark = True
+    print(f"[Device] Using {device}")
 
     # Load datasets
     def load_dataset(mode, split, seed):
@@ -80,16 +82,11 @@ def main(args):
     y_train_basis = basis.evaluate(y_train_unit)[:, 1:].astype(np.float32)
     y_val_basis = basis.evaluate(y_val_unit)[:, 1:].astype(np.float32)
 
-    train_loader = DataLoader(
-        TensorDataset(X_train, torch.from_numpy(y_train_basis)),
-        batch_size=args.batch_size,
-        shuffle=True,
-    )
-    val_loader = DataLoader(
-        TensorDataset(X_val, torch.from_numpy(y_val_basis)),
-        batch_size=args.batch_size,
-        shuffle=False,
-    )
+    # Keep all transformed training/validation tensors on the GPU.
+    X_train = X_train.to(device)
+    X_val = X_val.to(device)
+    y_train_basis = torch.from_numpy(y_train_basis).to(device)
+    y_val_basis = torch.from_numpy(y_val_basis).to(device)
 
     # model and optimizer
     model = DeepCDEModel(input_dim=X_train.shape[1], n_basis=args.n_basis).to(
@@ -108,22 +105,28 @@ def main(args):
     t0 = time.time()
     for epoch in range(1, args.epochs + 1):
         model.train()
-        total_loss = 0.0
-        n_batches = 0
+        total_loss = torch.zeros((), device=device)
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
         start = time.time()
+        n_train = X_train.shape[0]
 
-        for xb, yb in train_loader:
-            xb, yb = xb.to(device), yb.to(device)
-            optimizer.zero_grad()
+        for idx in batch_indices(
+            n_train, args.batch_size, device, shuffle=True
+        ):
+            xb = X_train[idx]
+            yb = y_train_basis[idx]
+            optimizer.zero_grad(set_to_none=True)
             beta = model(xb)
             loss = criterion(beta, yb)
             loss.backward()
             optimizer.step()
-            total_loss += loss.item()
-            n_batches += 1
+            total_loss += loss.detach() * xb.shape[0]
 
-        avg_train_loss = total_loss / max(1, n_batches)
-        val_loss = evaluate(model, val_loader, criterion, device)
+        avg_train_loss = (total_loss / n_train).item()
+        val_loss = evaluate(
+            model, X_val, y_val_basis, criterion, args.batch_size
+        )
 
         train_hist.append(avg_train_loss)
         val_hist.append(val_loss)
@@ -135,6 +138,8 @@ def main(args):
         else:
             no_improve += 1
 
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
         elapsed = time.time() - start
         print(
             f"Epoch {epoch:4d}: train={avg_train_loss:.4f} | val={val_loss:.4f} | time={elapsed:.2f}s"

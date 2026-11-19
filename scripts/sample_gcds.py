@@ -3,7 +3,6 @@ import os
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
 from condgen_benchmark.methods.gcds.core import GCDSGenerator
@@ -44,19 +43,13 @@ def load_Y_normalization_params(mode, seed):
 def sample_multiple_batches(
     generator, X, num_samples, batch_size, noise_dim, device
 ):
-    loader = DataLoader(
-        TensorDataset(X),
-        batch_size=batch_size,
-        num_workers=4,
-        pin_memory=True,
-        shuffle=False,
-        drop_last=False,
-    )
-
+    X = X.to(device)
     y_hats = []
 
-    for (Xb,) in tqdm(loader, desc="Sampling", leave=False):
-        Xb = Xb.to(device)  # [B, X_dim]
+    for start in tqdm(
+        range(0, X.shape[0], batch_size), desc="Sampling", leave=False
+    ):
+        Xb = X[start : start + batch_size]
         B = Xb.shape[0]
 
         Xb_repeat = Xb.repeat_interleave(num_samples, dim=0)  # [B * S, X_dim]
@@ -75,9 +68,11 @@ def sample_multiple_batches(
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    device = torch.device(
-        "cpu"
-    )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.benchmark = True
+    print(f"[Device] Using {device}")
 
     X, Y_true = load_test_data(
         args.data_name, args.seed

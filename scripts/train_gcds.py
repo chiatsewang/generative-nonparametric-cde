@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import yaml
-from torch.utils.data import DataLoader, TensorDataset
 
 from condgen_benchmark.methods.gcds.core import (
     GCDSDiscriminator,
@@ -41,8 +40,11 @@ def apply_normalization(tensor, mean, std):
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.benchmark = True
+    print(f"[Device] Using {device}")
 
     X_train, Y_train = load_dataset(args.data_name, "train", args.seed)
     X_val, Y_val = load_dataset(args.data_name, "valid", args.seed)
@@ -62,18 +64,11 @@ def main(args):
     np.savez(norm_path, mean=y_mean.numpy(), std=y_std.numpy())
     print(f"Saved Y normalization parameters to {norm_path}")
 
-    train_loader = DataLoader(
-        TensorDataset(X_train, Y_train),
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=4,
-    )
-    # val_loader = DataLoader(
-    #     TensorDataset(X_val, Y_val),
-    #     batch_size=args.batch_size,
-    #     shuffle=False,
-    #     num_workers=4,
-    # )
+    # Keep the complete synthetic train/validation tensors on the GPU.
+    X_train = X_train.to(device)
+    Y_train = Y_train.to(device)
+    X_val = X_val.to(device)
+    Y_val = Y_val.to(device)
 
     x_dim = X_train.shape[1]
     y_dim = Y_train.shape[1]
@@ -94,12 +89,13 @@ def main(args):
     history_g, history_d, epoch_times = train_gcds(
         generator,
         discriminator,
-        train_loader,
+        X_train,
+        Y_train,
+        batch_size=args.batch_size,
         noise_dim=noise_dim,
         num_epochs=args.epochs,
         lr_g=args.lr_g,
         lr_d=args.lr_d,
-        device=device,
     )
     end = time.time()
     print(f"Training completed in {end - start:.2f} seconds")
