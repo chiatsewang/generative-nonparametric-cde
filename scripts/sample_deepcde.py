@@ -68,9 +68,11 @@ def main(args):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    device = torch.device(
-        "cpu"
-    )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.benchmark = True
+    print(f"[Device] Using {device}")
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True
 
@@ -139,11 +141,12 @@ def main(args):
     delta = args.delta
     bin_size = u_grid_np[1] - u_grid_np[0]
 
-    # Evaluate pdf on grid (returns p_Y on y_grid; matches cde_predict signature)
+    # Evaluate pdf on grid. Keep standardized X on GPU during model evaluation.
+    Xz = Xz.to(device)
     rows = []
     with torch.no_grad():
         for i in range(0, N, args.batch_size):
-            xb = Xz[i : i + args.batch_size].to(device)  # (B,d)
+            xb = Xz[i : i + args.batch_size]  # (B,d)
             beta = model(xb).detach().cpu().numpy()  # (B, n_basis)
             p_y = cde_predict(
                 beta, y_min, y_max, u_grid_np, basis, delta, bin_size

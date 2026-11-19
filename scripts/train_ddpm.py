@@ -8,14 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import yaml
-from torch.utils.data import DataLoader, TensorDataset
 
-from condgen_benchmark.data.timestep_wrapper import TimestepWrapper
 from condgen_benchmark.methods.ddpm.core import Diffusion
 from condgen_benchmark.methods.ddpm.loss import ddpm_loss
-
-# from condgen_benchmark.models.conditional_mlp import ConditionalMLP
 from condgen_benchmark.models.conditional_mlp import ConditionalMLPScalarT
+from condgen_benchmark.utils.gpu_batching import batch_indices
 
 
 def load_dataset(mode, split, seed):
@@ -39,30 +36,34 @@ def apply_normalization(tensor, mean, std):
     return (tensor - mean) / (std + 1e-8)
 
 
-def evaluate(model, diffusion, loader, device):
+@torch.no_grad()
+def evaluate(model, diffusion, Y, X, batch_size):
     model.eval()
-    total_loss = 0.0
-    n_batches = 0
-    with torch.no_grad():
-        for Yb, Xb, tb, tb_norm in loader:
-            Yb, Xb, tb, tb_norm = (
-                Yb.to(device),
-                Xb.to(device),
-                tb.to(device),
-                tb_norm.to(device),
-            )
-            loss = ddpm_loss(model, diffusion, Yb, Xb, tb, tb_norm)
-            total_loss += loss.item()
-            n_batches += 1
-    return total_loss / n_batches
+    device = Y.device
+    n = Y.shape[0]
+    total_loss = torch.zeros((), device=device)
+
+    for idx in batch_indices(n, batch_size, device, shuffle=False):
+        Yb = Y[idx]
+        Xb = X[idx]
+        tb = torch.randint(
+            0, diffusion.timesteps, (Yb.shape[0],), device=device
+        )
+        tb_norm = (tb.float() / diffusion.timesteps).unsqueeze(1)
+        loss = ddpm_loss(model, diffusion, Yb, Xb, tb, tb_norm)
+        total_loss += loss.detach() * Yb.shape[0]
+
+    return (total_loss / n).item()
 
 
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    device = torch.device(
-        "cpu"
-    )  # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.benchmark = True
+    print(f"[Device] Using {device}")
 
     X_train, Y_train = load_dataset(args.data_name, "train", args.seed)
     X_val, Y_val = load_dataset(args.data_name, "valid", args.seed)
@@ -79,32 +80,14 @@ def main(args):
         Y_mean = torch.zeros(1, d, device=Y_train.device, dtype=Y_train.dtype)
         Y_std = torch.ones(1, d, device=Y_train.device, dtype=Y_train.dtype)
 
-    # === Prepare DataLoaders ===
-    train_dataset = TimestepWrapper(
-        TensorDataset(Y_train, X_train), T=args.timesteps, require_norm=True
-    )
-    val_dataset = TimestepWrapper(
-        TensorDataset(Y_val, X_val), T=args.timesteps, require_norm=True
-    )
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        num_workers=4,
-        pin_memory=False,
-        shuffle=True,
-    )
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=args.batch_size,
-        num_workers=4,
-        pin_memory=False,
-        shuffle=False,
-    )
+    # Synthetic datasets are tiny: transfer once, then batch entirely on GPU.
+    X_train = X_train.to(device)
+    Y_train = Y_train.to(device)
+    X_val = X_val.to(device)
+    Y_val = Y_val.to(device)
 
     Y_dim = Y_train.shape[1]
     X_dim = X_train.shape[1]
-    # model = ConditionalMLP(Y_dim, X_dim).to(device)
     model = ConditionalMLPScalarT(X_dim, Y_dim, hidden_dim=args.hidden_dim).to(
         device
     )
@@ -129,28 +112,32 @@ def main(args):
 
     for epoch in range(1, args.epochs + 1):
         model.train()
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
         start_epoch = time.time()
-        total_loss = 0.0
-        n_batches = 0
+        total_loss = torch.zeros((), device=device)
+        n_train = Y_train.shape[0]
 
-        for Yb, Xb, tb, tb_norm in train_loader:
-            Yb, Xb, tb, tb_norm = (
-                Yb.to(device),
-                Xb.to(device),
-                tb.to(device),
-                tb_norm.to(device),
+        for idx in batch_indices(
+            n_train, args.batch_size, device, shuffle=True
+        ):
+            Yb = Y_train[idx]
+            Xb = X_train[idx]
+            tb = torch.randint(
+                0, diffusion.timesteps, (Yb.shape[0],), device=device
             )
+            tb_norm = (tb.float() / diffusion.timesteps).unsqueeze(1)
+
             loss = ddpm_loss(model, diffusion, Yb, Xb, tb, tb_norm)
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.item()
-            n_batches += 1
+            total_loss += loss.detach() * Yb.shape[0]
 
         scheduler.step()  # Adjust learning rate
-        avg_train_loss = total_loss / n_batches
-        val_loss = evaluate(model, diffusion, val_loader, device)
+        avg_train_loss = (total_loss / n_train).item()
+        val_loss = evaluate(model, diffusion, Y_val, X_val, args.batch_size)
 
         # Record losses for plotting
         train_losses.append(avg_train_loss)
@@ -172,6 +159,8 @@ def main(args):
             )
             break
 
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
         end_epoch = time.time()
         elapsed_time = end_epoch - start_epoch
         epoch_times.append(elapsed_time)
