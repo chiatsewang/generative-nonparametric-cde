@@ -8,7 +8,7 @@
 		train-flex-single sample-flex-single train-flex sample-flex \
 		train-drf-single sample-drf-single train-drf sample-drf \
 		train-ctmtf-single train-ctmtf sample-ctmtf-single sample-ctmtf \
-		conclude-single conclude \
+		conclude \
 		conclude-ddpm conclude-gcds conclude-hy conclude-deepcde conclude-flex conclude-ctmtf conclude-drf \
 		train-srm-single sample-srm-single train-srm sample-srm eval-srm conclude-srm \
 
@@ -28,6 +28,7 @@ ALL_SEEDS := 230 460 690 920 1150 1380 1610 1840 2070 2300
 TRAIN  ?= 5000
 VALID  ?= 2000
 TEST   ?= 2000
+ORACLE ?= 500 # Number of samples used to compute ES_oracle
 
 # === SAMPLING SIZE ===
 SAMPLES ?= 2000
@@ -85,7 +86,7 @@ GENERATE_SCRIPT = scripts.generate_synthetic
 OUTDIR ?= datasets/synthetic
 
 generate:
-	$(PYTHON) -m $(GENERATE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --train-samples $(TRAIN) --valid-samples $(VALID) --test-samples $(TEST) --out-dir $(OUTDIR)
+	$(PYTHON) -m $(GENERATE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --train-samples $(TRAIN) --valid-samples $(VALID) --test-samples $(TEST) --oracle-samples $(ORACLE) --out-dir $(OUTDIR)
 
 
 
@@ -631,23 +632,19 @@ eval:
 
 CONCLUDE_SCRIPT = scripts.conclude_simulation
 
-# ---- single run ----
-conclude-single:
-ifeq ($(strip $(ALGO)),)
-	@echo "Please specify ALGO (e.g., ALGO=flex)"
-else
-	@echo concluding for this configuration: ALGO=$(ALGO), DATA_MODEL=$(DATA_MODEL)
-	$(PYTHON) -m $(CONCLUDE_SCRIPT) --data-name $(DATA_MODEL) --algorithm $(ALGO)
+# Optional filters are passed only when they are explicitly provided on the
+# command line. With no filters, conclude_simulation summarizes all methods and
+# all data models into workspaces/all.xlsx.
+CONCLUDE_ARGS :=
+ifeq ($(origin ALGO), command line)
+    CONCLUDE_ARGS += --algorithm $(ALGO)
+endif
+ifeq ($(origin DATA_MODEL), command line)
+    CONCLUDE_ARGS += --data-name $(DATA_MODEL)
 endif
 
-# ---- all runs (no SEED) ----
-CONCLUDE_ALL_CMD := \
-	$(foreach a,$(TARGET_ALGOS), \
-		$(foreach m,$(TARGET_MODELS), \
-			$(MAKE) conclude-single ALGO=$(a) DATA_MODEL=$(m) && ))
-
 conclude:
-	@$(CONCLUDE_ALL_CMD) echo "All Conclude Tasks Completed!"
+	$(PYTHON) -m $(CONCLUDE_SCRIPT) $(CONCLUDE_ARGS)
 
 # ---- algorithm shortcuts ----
 conclude-ddpm:
