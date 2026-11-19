@@ -45,7 +45,8 @@ pre-commit install
 ### R setup (CTMTF and DRF)
 
 CTMTF and DRF run through `Rscript`. Install the R packages `reticulate`,
-`partykit`, `trtf`, `tram`, `mlt`, `basefun`, `drf` and `nloptr`.
+`partykit`, `trtf`, `tram`, `mlt`, `basefun` and `drf`. `mlt` depends on
+`nloptr`, which some systems need to install separately.
 `reticulate` must use the project's Python environment, so run `make` from
 the shell where that environment is active and `python` resolves to it.
 
