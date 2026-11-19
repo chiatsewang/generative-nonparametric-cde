@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 from condgen_benchmark.data.synthetic import get_synthetic_data_class
+from condgen_benchmark.utils.eval_energy_score import oracle_energy_score
 
 
 def parse_args():
@@ -68,21 +69,36 @@ def parse_args():
         help="Optional data-generation parameter.",
     )
 
+    parser.add_argument(
+        "--oracle-samples",
+        type=int,
+        default=1000,
+        help="Conditional samples per test predictor for oracle EScore (default: 1000).",
+    )
+    parser.add_argument(
+        "--escore-device",
+        choices=["auto", "cuda", "cpu"],
+        default="auto",
+        help="Device for pairwise Energy Score computation (default: auto).",
+    )
+
     return parser.parse_args()
 
 
-def save_split(X, Y, out_dir, name):
+def save_split(X, Y, out_dir, name, **extra):
     out_path = os.path.join(out_dir, f"{name}.npz")
-    np.savez_compressed(out_path, X=X, Y=Y)
+    np.savez_compressed(out_path, X=X, Y=Y, **extra)
     print(f"Saved {name}: {out_path} (X: {X.shape}, Y: {Y.shape})")
 
 
 def main():
     """
-    Generate synthetic datasets and save train/valid/test splits in .npz format
+    Generate synthetic dataset and save train/valid/test splits in .npz format
     using the class-based SyntheticData interface.
     """
     args = parse_args()
+    if args.oracle_samples < 2:
+        raise ValueError("--oracle-samples must be at least 2")
 
     data_class = get_synthetic_data_class(data_name=args.data_name)
 
@@ -120,7 +136,23 @@ def main():
 
     save_split(X[train_idx], Y[train_idx], out_dir, "train")
     save_split(X[valid_idx], Y[valid_idx], out_dir, "valid")
-    save_split(X[test_idx], Y[test_idx], out_dir, "test")
+    # Compute the oracle with exactly the X_i stored in test.npz, but draw
+    # NEW independent responses from each true P(Y | X_i). Do not reuse the
+    # single observed Y_i in test.npz. The generator returns rows grouped by
+    # test predictor, so reshape to (n_test, oracle_samples, response_dim).
+    X_test = X[test_idx]
+    Y_oracle, _ = generator.generate(n_samples=args.oracle_samples, X=X_test)
+    Y_oracle = Y_oracle.reshape(len(X_test), args.oracle_samples, -1)
+    ES_oracle = oracle_energy_score(Y_oracle, device=args.escore_device)
+    # Only save the scalar oracle score; the Monte Carlo samples are discarded.
+    save_split(
+        X_test,
+        Y[test_idx],
+        out_dir,
+        "test",
+        ES_oracle=np.float64(ES_oracle),
+    )
+    print(f"Oracle EScore: {ES_oracle:.6f} (M={args.oracle_samples})")
 
 
 if __name__ == "__main__":
