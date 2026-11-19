@@ -2,6 +2,7 @@
 import argparse
 import json
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -57,6 +58,8 @@ def main(args: argparse.Namespace) -> None:
         args.data_name,
         "--seed",
         str(args.seed),
+        "--python_bin",
+        sys.executable,
     ]
 
     print("[CTMTF] Experiment Settings:")

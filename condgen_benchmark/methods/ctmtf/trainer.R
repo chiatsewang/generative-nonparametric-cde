@@ -26,11 +26,6 @@ parse_args <- function() {
 }
 
 load_npz_xy <- function(npz_path) {
-  py <- Sys.which("python")
-  if (nzchar(py)) {
-    reticulate::use_python(py, required = TRUE)
-  }
-
   np <- import("numpy")
   dat <- np$load(npz_path, allow_pickle = TRUE)
 
@@ -99,6 +94,10 @@ fit_ctmtf <- function(X_train, Y_train, seed_now) {
 }
 
 args <- parse_args()
+
+if (!is.null(args$python_bin)) {
+  reticulate::use_python(args$python_bin, required = TRUE)
+}
 data_name <- args$data_name
 seed_now <- as.integer(args$seed)
 project_root <- getwd()
