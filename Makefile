@@ -281,8 +281,9 @@ TRAIN_DEEPCDE_SCRIPT = scripts.train_deepcde
 DEEPCDE_BATCH ?= 128
 DEEPCDE_EPOCHS ?= 500
 DEEPCDE_LR ?= 1e-4
+DEEPCDE_HIDDEN_DIMS ?= 32,64,32
 DEEPCDE_EARLY_STOP ?= --early-stop
-DEEPCDE_PATIENCE ?= 20
+DEEPCDE_PATIENCE ?= 50
 DEEPCDE_BASIS ?= cosine
 DEEPCDE_NUM_BASIS ?= 31
 
@@ -292,6 +293,7 @@ ifneq ($(filter $(DATA_MODEL),$(DEEPCDE_APPLY_MODELS)),)
 	$(PYTHON) -m $(TRAIN_DEEPCDE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--basis $(DEEPCDE_BASIS) \
 		--n-basis $(DEEPCDE_NUM_BASIS) \
+		--hidden-dims $(DEEPCDE_HIDDEN_DIMS) \
 		--batch-size $(DEEPCDE_BATCH) \
 		--epochs $(DEEPCDE_EPOCHS) \
 		--lr $(DEEPCDE_LR) \

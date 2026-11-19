@@ -5,11 +5,15 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import yaml
 
 from condgen_benchmark.methods.deepcde.bases.cosine import CosineBasis
 from condgen_benchmark.methods.deepcde.bases.wavelet import WaveletBasis
 from condgen_benchmark.methods.deepcde.deepcde_pytorch import cde_predict
-from condgen_benchmark.methods.deepcde.models import DeepCDEModel
+from condgen_benchmark.methods.deepcde.models import (
+    DeepCDEModel,
+    parse_hidden_dims,
+)
 
 
 def load_test_dataset(mode: str, seed: int):
@@ -120,9 +124,21 @@ def main(args):
     else:
         raise ValueError(f"Unknown basis type: {bmeta['basis']}")
 
+    # Restore the training architecture; older runs default to 32,64,32.
+    config_path = ws / "config.yaml"
+    if config_path.exists():
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f) or {}
+    else:
+        config = {}
+    hidden_dims = parse_hidden_dims(config.get("hidden_dims"))
+    print(f"[DeepCDE] hidden_dims={hidden_dims}")
+
     # Build model and basis
     model = (
-        DeepCDEModel(input_dim=d, n_basis=int(bmeta["n_basis"]))
+        DeepCDEModel(
+            input_dim=d, n_basis=int(bmeta["n_basis"]), hidden_dims=hidden_dims
+        )
         .to(device)
         .eval()
     )
