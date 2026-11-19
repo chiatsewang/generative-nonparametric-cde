@@ -290,94 +290,73 @@ class U6Data(SyntheticData):
 
 @register_synthetic_data("U7")
 class U7Data(SyntheticData):
+    r"""
+    U7: Correctly specified single-index conditional Gaussian model.
+
+        X ~ N_3(0, I_3), eps ~ N(0, 1), independently
+        beta = (1, 2, -1) / sqrt(6)
+        Z = beta^T X
+        Y = sin(1.5 Z) + (0.7 + 0.2 tanh(Z)) eps
+
+    Consequently,
+        E[Y | X] = sin(1.5 Z)
+        SD[Y | X] = 0.7 + 0.2 tanh(Z)
     """
-    U7: Non-additive noise via sine transformation, with exponential link
 
-        X ~ N(0,1), eps ~ N(0,1) independent
-        T = c X + eps
-        u = sin(T)
-        Y = g(u) = exp(u) = exp(sin(T))
+    def __init__(self, seed: int = 230):
+        super().__init__(predictor_dim=3, response_dim=1, seed=seed)
+        self.beta = np.array([1.0, 2.0, -1.0]) / np.sqrt(6.0)
 
-    Conditionally on X = x, we have
-        T | X=x ~ N(mu, 1),  mu = c x
-        Y | X=x = exp(sin(T))
+    def _forward(self, X: np.ndarray) -> np.ndarray:
+        """Sample the response conditionally on X."""
+        Z = X @ self.beta
+        eps = np.random.randn(len(X))
+        return np.sin(1.5 * Z) + (0.7 + 0.2 * np.tanh(Z)) * eps
 
-    mean_std() uses the Bessel-series representation:
-        E[exp(z sin T) | X=x]
-          = I_0(z) + 2 sum_{n>=1} I_n(z) exp(-n^2/2) cos(n (mu - pi/2)),
-        where I_n is the modified Bessel function of the first kind.
+    def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Analytical conditional mean and standard deviation."""
+        Z = np.atleast_2d(X) @ self.beta
+        mean = np.sin(1.5 * Z)
+        std = 0.7 + 0.2 * np.tanh(Z)
+        return mean, std
+
+
+@register_synthetic_data("O7")
+class O7Data(SyntheticData):
+    r"""Original U7 model (before the October 2026 replacement).
+
+        X ~ N(0, 1), eps ~ N(0, 1) independently
+        T = c * X + eps, c = 20 by default
+        Y = exp(sin(T))
+
+    The conditional mean and standard deviation are computed using
+    the truncated modified-Bessel expansion from the original U7 code.
     """
 
     def __init__(self, seed: int = 230, c: float = 20.0, K: int = 20):
-        """
-        Parameters
-        ----------
-        seed : int
-            Random seed.
-        c : float
-            Nonlinearity parameter in T = c X + eps.
-        K : int
-            Truncation level for the Bessel series (n = 1,...,K).
-            Larger K -> more accurate, but slightly slower.
-        """
         super().__init__(predictor_dim=1, response_dim=1, seed=seed)
         self.c = float(c)
         self.K = int(K)
 
     def _forward(self, X: np.ndarray) -> np.ndarray:
-        """
-        Generate Y given X for the U7 model.
-
-        X: shape [n, 1] or [n]
-        return Y: shape [n]
-        """
-        X = np.asarray(X)
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
-
-        n = X.shape[0]
-        x1 = X[:, 0]
-
-        eps = np.random.normal(loc=0.0, scale=1.0, size=n)
-        T = self.c * x1 + eps
-        u = np.sin(T)
-        Y = np.exp(u)
-        return Y
+        X = np.asarray(X).reshape(-1, 1)
+        eps = np.random.normal(loc=0.0, scale=1.0, size=X.shape[0])
+        T = self.c * X[:, 0] + eps
+        return np.exp(np.sin(T))
 
     def mean_std(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Analytic conditional mean and std of Y | X for U7 with g(u) = exp(u),
-        using truncated Bessel-series expansions.
-
-        T | X=x ~ N(mu, 1), mu = c x
-        Y = exp(sin(T))
-
-        E[Y | X=x]  = m1(x)
-        E[Y^2 | X=x]= m2(x)
-        Var(Y|X=x)  = m2(x) - m1(x)^2
-        """
-        X = np.asarray(X)
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
-
-        x1 = X[:, 0]
-        mu = self.c * x1
-
-        K = self.K
-        n_vals = np.arange(1, K + 1, dtype=float)
+        X = np.asarray(X).reshape(-1, 1)
+        mu = self.c * X[:, 0]
+        n_vals = np.arange(1, self.K + 1, dtype=float)
+        angle = np.outer(n_vals, mu - np.pi / 2.0)
+        cosine = np.cos(angle)
 
         coeff1 = iv(n_vals, 1.0) * np.exp(-0.5 * n_vals**2)
-        angle = np.outer(n_vals, mu - np.pi / 2.0)
-        cos_terms = np.cos(angle)
-        m1 = iv(0, 1.0) + 2.0 * (coeff1[:, None] * cos_terms).sum(axis=0)
+        m1 = iv(0, 1.0) + 2.0 * (coeff1[:, None] * cosine).sum(axis=0)
 
         coeff2 = iv(n_vals, 2.0) * np.exp(-0.5 * n_vals**2)
-        cos_terms2 = cos_terms  # same angles
-        m2 = iv(0, 2.0) + 2.0 * (coeff2[:, None] * cos_terms2).sum(axis=0)
-
-        var = m2 - m1**2
-        std = np.sqrt(var)
-        return m1, std
+        m2 = iv(0, 2.0) + 2.0 * (coeff2[:, None] * cosine).sum(axis=0)
+        return m1, np.sqrt(m2 - m1**2)
 
 
 @register_synthetic_data("M1")
