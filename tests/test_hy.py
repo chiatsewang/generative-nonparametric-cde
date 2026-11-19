@@ -172,3 +172,30 @@ def test_sampler_energy_score_is_finite_and_nonnegative(problem):
     sampler = PreparedConditionalSampler(X, Y, X[:5], [1.0, 0.0], grid)
     score = sampler.energy_score(1.0, Y[:5])
     assert np.isfinite(score) and score >= 0
+
+
+def _skewed_linear_gaussian_data(seed, n=3000):
+    """Y = 1 + 2 X0 + N(0, 0.2^2) with a skewed density of X0 on [-1, 1]."""
+    rng = np.random.default_rng(seed)
+    X = rng.uniform(-1.0, 1.0, size=(n, 2))
+    X[:, 0] = 2.0 * rng.uniform(size=n) ** 2 - 1.0
+    Y = 1.0 + 2.0 * X[:, 0] + 0.2 * rng.standard_normal(n)
+    return X, Y
+
+
+@pytest.mark.parametrize("seed", [0, 1, 2, 3, 4])
+def test_sampler_recovers_a_known_conditional_median(seed):
+    X, Y = _skewed_linear_gaussian_data(seed)
+    grid = response_grid(Y, 400)
+    x0 = np.array([-0.6, -0.2, 0.2, 0.6])
+    queries = np.stack([x0, np.zeros(4)], axis=1)
+    sampler = PreparedConditionalSampler(X, Y, queries, [1.0, 0.0], grid)
+    m = 999
+    uniforms = np.tile((np.arange(m) + 0.5) / m, (4, 1))
+    samples = sampler.sample(0.3, m, uniforms=uniforms)
+    # The conditional median is 1 + 2 x0. The skewed design makes the
+    # local-linear correction matter: with the right weights the error is
+    # below 0.032, with a wrong sign on the correction it exceeds 0.09.
+    np.testing.assert_allclose(
+        np.median(samples, axis=1), 1.0 + 2.0 * x0, atol=0.06
+    )
