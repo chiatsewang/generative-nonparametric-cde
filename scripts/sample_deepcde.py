@@ -71,6 +71,7 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.benchmark = True
     print(f"[Device] Using {device}")
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True
