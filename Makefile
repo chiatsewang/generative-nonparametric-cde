@@ -15,17 +15,11 @@ PYTHON := PYTHONPATH=. python
 # Windows
 # PYTHON := python
 
-# REPEATED RUN SETTING MODELS x SEEDS and ALGOS for evaluation
-ALL_MODELS := U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4
+# Shared method/model applicability settings (also read by conclude_simulation.py)
+include skip_rules.mk
+
+# REPEATED RUN SETTING: SEEDS
 ALL_SEEDS := 230 460 690 920 1150 1380 1610 1840 2070 2300
-ALL_ALGOS := ddpm gcds hyalg flex deepcde
-
-
-# MODELS TO SKIP FOR SPECIFIC ALGOS
-HY_SKIP_MODELS := U5 U6 M1 M2 M3 M4
-FLEX_SKIP_MODELS := M1 M2 M3 M4
-DEEPCDE_SKIP_MODELS := M1 M2 M3 M4
-
 
 # === DEFAULT VALUE FOR TRAINING and VALIDATION and TEST SAMPLE SIZE ===
 TRAIN  ?= 5000
@@ -68,6 +62,13 @@ ifeq ($(origin ALGO), command line)
 else
     TARGET_ALGOS := $(ALL_ALGOS)
 endif
+
+# Models used by each algorithm in repeated train/sample runs
+DDPM_TARGET_MODELS    := $(filter $(DDPM_APPLY_MODELS),$(TARGET_MODELS))
+GCDS_TARGET_MODELS    := $(filter $(GCDS_APPLY_MODELS),$(TARGET_MODELS))
+HY_TARGET_MODELS      := $(filter $(HY_APPLY_MODELS),$(TARGET_MODELS))
+DEEPCDE_TARGET_MODELS := $(filter $(DEEPCDE_APPLY_MODELS),$(TARGET_MODELS))
+FLEX_TARGET_MODELS    := $(filter $(FLEX_APPLY_MODELS),$(TARGET_MODELS))
 
 
 #
@@ -117,7 +118,7 @@ train-ddpm-single:
 
 # ---- all runs ----
 DDPM_TRAIN_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(DDPM_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) train-ddpm-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -142,7 +143,7 @@ sample-ddpm-single:
 
 # ---- all runs ----
 DDPM_SAMPLE_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(DDPM_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) sample-ddpm-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -171,7 +172,7 @@ train-gcds-single:
 
 # ---- all runs ----
 GCDS_TRAIN_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(GCDS_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) train-gcds-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -198,7 +199,7 @@ sample-gcds-single:
 
 # ---- all runs ----
 GCDS_SAMPLE_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(GCDS_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) sample-gcds-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -218,17 +219,17 @@ HYALG_TRAIN_H = 0.7
 
 # --- single run ---
 train-hyalg-single:
-ifeq ($(filter $(DATA_MODEL),$(HY_SKIP_MODELS)),)
+ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
 	$(PYTHON) -m $(TRAIN_HYALG_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--radius $(HYALG_RADIUS) \
 		--h $(HYALG_TRAIN_H)
 else
-	@echo "skip train-hyalg-single for DATA_MODEL=$(DATA_MODEL)"
+	@echo "HyAlg is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
 
 # --- all runs ---
 HYALG_TRAIN_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(HY_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) train-hyalg-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -247,18 +248,18 @@ HYALG_Y_GRID ?= 200
 
 # --- single run ---
 sample-hyalg-single:
-ifeq ($(filter $(DATA_MODEL),$(HY_SKIP_MODELS)),)
+ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
 	$(PYTHON) -m $(SAMPLE_HYALG_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--num-samples $(SAMPLES) \
 		--H $(HYALG_SAMPLE_H) \
 		--ygrid $(HYALG_Y_GRID)
 else
-	@echo "skip sample-hyalg-single for DATA_MODEL=$(DATA_MODEL)"
+	@echo "HyAlg is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
 
 # --- all runs ---
 HYALG_SAMPLE_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(HY_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) sample-hyalg-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -283,7 +284,7 @@ DEEPCDE_NUM_BASIS ?= 31
 
 # --- single run ---
 train-deepcde-single:
-ifeq ($(filter $(DATA_MODEL),$(DEEPCDE_SKIP_MODELS)),)
+ifneq ($(filter $(DATA_MODEL),$(DEEPCDE_APPLY_MODELS)),)
 	$(PYTHON) -m $(TRAIN_DEEPCDE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--basis $(DEEPCDE_BASIS) \
 		--n-basis $(DEEPCDE_NUM_BASIS) \
@@ -293,12 +294,12 @@ ifeq ($(filter $(DATA_MODEL),$(DEEPCDE_SKIP_MODELS)),)
 		$(DEEPCDE_EARLY_STOP) \
 		--patience $(DEEPCDE_PATIENCE)
 else
-	@echo "skip train-deepcde-single for DATA_MODEL=$(DATA_MODEL)"
+	@echo "DeepCDE is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
 
 # --- all runs ---
 DEEPCDE_TRAIN_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(DEEPCDE_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) train-deepcde-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -317,19 +318,19 @@ DEEPCDE_NUM_YGRID ?= 200
 
 # --- single run ---
 sample-deepcde-single:
-ifeq ($(filter $(DATA_MODEL),$(DEEPCDE_SKIP_MODELS)),)
+ifneq ($(filter $(DATA_MODEL),$(DEEPCDE_APPLY_MODELS)),)
 	$(PYTHON) -m $(SAMPLE_DEEPCDE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--num-samples $(SAMPLES) \
 		--ny $(DEEPCDE_NUM_YGRID) \
 		--batch-size $(DEEPCDE_BATCH) \
 		--model-choice $(DEEPCDE_MODEL_CHOICE)
 else
-	@echo "skip sample-deepcde-single for DATA_MODEL=$(DATA_MODEL)"
+	@echo "DeepCDE is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
 
 # --- all runs ---
 DEEPCDE_SAMPLE_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(DEEPCDE_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) sample-deepcde-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -349,18 +350,18 @@ FLEX_REG_METHOD ?= rf
 
 # --- single run ---
 train-flex-single:
-ifeq ($(filter $(DATA_MODEL),$(FLEX_SKIP_MODELS)),)
+ifneq ($(filter $(DATA_MODEL),$(FLEX_APPLY_MODELS)),)
 	$(PYTHON) -m $(TRAIN_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--basis $(FLEX_BASIS) \
 		--max-basis $(FLEX_MAX_BASIS) \
 		--reg $(FLEX_REG_METHOD)
 else
-	@echo "skip train-flex-single for DATA_MODEL=$(DATA_MODEL)"
+	@echo "FlexCode is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
 
 # --- all run ---
 FLEX_TRAIN_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(FLEX_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) train-flex-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -378,18 +379,18 @@ FLEX_NUM_Y_GRID ?= 200
 
 # --- single run ---
 sample-flex-single:
-ifeq ($(filter $(DATA_MODEL),$(FLEX_SKIP_MODELS)),)
+ifneq ($(filter $(DATA_MODEL),$(FLEX_APPLY_MODELS)),)
 	$(PYTHON) -m $(SAMPLE_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
 		--num-samples $(SAMPLES) \
 		--ny $(FLEX_NUM_Y_GRID) \
 		$(FLEX_TUNED_MODEL)
 else
-	@echo "skip sample-flex-single for DATA_MODEL=$(DATA_MODEL)"
+	@echo "FlexCode is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
 
 # ---  all run ---
 FLEX_SAMPLE_ALL_CMD := \
-	$(foreach m,$(TARGET_MODELS), \
+	$(foreach m,$(FLEX_TARGET_MODELS), \
 		$(foreach s,$(TARGET_SEEDS), \
 			$(MAKE) sample-flex-single DATA_MODEL=$(m) SEED=$(s) && ))
 
@@ -412,30 +413,50 @@ else
 endif
 
 # ---- algorithm shortcuts ----
+# Each shortcut passes only the data models supported by that algorithm.
+# If DATA_MODEL is specified by the user, the corresponding *_TARGET_MODELS
+# variable has already been filtered above.
 eval-ddpm:
-	$(MAKE) eval ALGO=ddpm
+	$(MAKE) eval ALGO=ddpm DATA_MODEL="$(DDPM_TARGET_MODELS)"
 
 eval-hyalg:
-	$(MAKE) eval ALGO=hyalg
+	$(MAKE) eval ALGO=hyalg DATA_MODEL="$(HY_TARGET_MODELS)"
 
 eval-gcds:
-	$(MAKE) eval ALGO=gcds
+	$(MAKE) eval ALGO=gcds DATA_MODEL="$(GCDS_TARGET_MODELS)"
 
 eval-flex:
-	$(MAKE) eval ALGO=flex
+	$(MAKE) eval ALGO=flex DATA_MODEL="$(FLEX_TARGET_MODELS)"
 
 eval-deepcde:
-	$(MAKE) eval ALGO=deepcde
+	$(MAKE) eval ALGO=deepcde DATA_MODEL="$(DEEPCDE_TARGET_MODELS)"
 
 # ---- all runs ----
-EVAL_ALL_CMD := \
-	$(foreach a,$(TARGET_ALGOS), \
-		$(foreach m,$(TARGET_MODELS), \
-			$(foreach s,$(TARGET_SEEDS), \
-				$(MAKE) eval-single ALGO=$(a) DATA_MODEL=$(m) SEED=$(s) && )))
-
+# Use shell loops rather than expanding every algorithm/model/seed combination
+# into one enormous command line. This avoids the OS "argument list too long"
+# limit while preserving ALGO, DATA_MODEL, and SEED command-line filters.
 eval:
-	@$(EVAL_ALL_CMD) echo "All Evaluation Tasks Completed!"
+	@set -e; \
+	for algo in $(TARGET_ALGOS); do \
+		case "$$algo" in \
+			ddpm)    models="$(DDPM_TARGET_MODELS)" ;; \
+			gcds)    models="$(GCDS_TARGET_MODELS)" ;; \
+			hyalg)   models="$(HY_TARGET_MODELS)" ;; \
+			flex)    models="$(FLEX_TARGET_MODELS)" ;; \
+			deepcde) models="$(DEEPCDE_TARGET_MODELS)" ;; \
+			*) echo "Unknown ALGO=$$algo"; exit 1 ;; \
+		esac; \
+		if [ -z "$$models" ]; then \
+			echo "Skipping $$algo: no applicable data models selected."; \
+			continue; \
+		fi; \
+		for m in $$models; do \
+			for s in $(TARGET_SEEDS); do \
+				$(MAKE) eval-single ALGO=$$algo DATA_MODEL=$$m SEED=$$s; \
+			done; \
+		done; \
+	done; \
+	echo "All Evaluation Tasks Completed!"
 
 
 
