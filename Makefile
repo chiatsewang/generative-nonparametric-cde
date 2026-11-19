@@ -4,10 +4,11 @@
         train-ddpm-single train-ddpm sample-ddpm-single sample-ddpm \
 		train-gcds-single sample-gcds-single train-gcds sample-gcds \
 		train-hyalg-single sample-hyalg-single train-hyalg sample-hyalg \
+		train-hy-single sample-hy-single train-hy sample-hy \
 		train-deepcde-single sample-deepcde-single train-deepcde sample-deepcde \
 		train-flex-single sample-flex-single train-flex sample-flex \
 		conclude-single conclude \
-		conclude-ddpm conclude-gcds conclude-hyalg conclude-deepcde conclude-flex \
+		conclude-ddpm conclude-gcds conclude-hyalg conclude-hy conclude-deepcde conclude-flex \
 
 # === General Python call with local imports ===
 PYTHON := PYTHONPATH=. python
@@ -274,6 +275,66 @@ sample-hyalg:
 
 
 # =====================
+#    HY training / automatic bandwidth tuning (one model and seed)
+# =====================
+TRAIN_HY_SCRIPT = scripts.train_hy
+HY_RADIUS ?= 1.0
+# Leave blank for the 21-pair search; specify BOTH for manual fitting.
+HY_H ?=
+HY_H_CDF ?=
+HY_N_SUB_VAL ?= 200
+HY_NUM_Y_GRID_TUNING ?= 50
+# HY theta estimation: batched float32 Adam on CUDA when available (otherwise CPU).
+HY_ADAM_LR ?= 0.01
+HY_ADAM_MAX_EPOCHS ?= 300
+HY_ADAM_PATIENCE ?= 30
+
+train-hy-single:
+ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
+	$(PYTHON) -m $(TRAIN_HY_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+		--radius $(HY_RADIUS) \
+		--n-sub-val $(HY_N_SUB_VAL) \
+		--ny-tuning $(HY_NUM_Y_GRID_TUNING) \
+		--adam-lr $(HY_ADAM_LR) \
+		--adam-max-epochs $(HY_ADAM_MAX_EPOCHS) \
+		--adam-patience $(HY_ADAM_PATIENCE) \
+		$(if $(strip $(HY_H)),--h $(HY_H),) \
+		$(if $(strip $(HY_H_CDF)),--H $(HY_H_CDF),)
+else
+	@echo "HY is not applied to DATA_MODEL=$(DATA_MODEL)"
+endif
+
+HY_TRAIN_ALL_CMD := \
+	$(foreach m,$(HY_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) train-hy-single DATA_MODEL=$(m) SEED=$(s) && ))
+train-hy:
+	@$(HY_TRAIN_ALL_CMD) echo "All HY Training Completed!"
+
+# =====================
+#    HY sampling (uses H saved by train-hy)
+# =====================
+SAMPLE_HY_SCRIPT = scripts.sample_hy
+HY_NUM_Y_GRID ?= 200
+
+sample-hy-single:
+ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
+	$(PYTHON) -m $(SAMPLE_HY_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+		--num-samples $(SAMPLES) \
+		--ny $(HY_NUM_Y_GRID)
+else
+	@echo "HY is not applied to DATA_MODEL=$(DATA_MODEL)"
+endif
+
+HY_SAMPLE_ALL_CMD := \
+	$(foreach m,$(HY_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) sample-hy-single DATA_MODEL=$(m) SEED=$(s) && ))
+sample-hy:
+	@$(HY_SAMPLE_ALL_CMD) echo "All HY Sampling Completed!"
+
+
+# =====================
 #   DEEPCDE training
 # =====================
 
@@ -429,6 +490,9 @@ eval-ddpm:
 eval-hyalg:
 	$(MAKE) eval ALGO=hyalg DATA_MODEL="$(HY_TARGET_MODELS)"
 
+eval-hy:
+	$(MAKE) eval ALGO=hy DATA_MODEL="$(HY_TARGET_MODELS)"
+
 eval-gcds:
 	$(MAKE) eval ALGO=gcds DATA_MODEL="$(GCDS_TARGET_MODELS)"
 
@@ -449,6 +513,7 @@ eval:
 			ddpm)    models="$(DDPM_TARGET_MODELS)" ;; \
 			gcds)    models="$(GCDS_TARGET_MODELS)" ;; \
 			hyalg)   models="$(HY_TARGET_MODELS)" ;; \
+			hy)      models="$(HY_TARGET_MODELS)" ;; \
 			flex)    models="$(FLEX_TARGET_MODELS)" ;; \
 			deepcde) models="$(DEEPCDE_TARGET_MODELS)" ;; \
 			*) echo "Unknown ALGO=$$algo"; exit 1 ;; \
@@ -499,6 +564,9 @@ conclude-ddpm:
 conclude-hyalg:
 	$(MAKE) conclude ALGO=hyalg
 
+conclude-hy:
+	$(MAKE) conclude ALGO=hy
+
 conclude-gcds:
 	$(MAKE) conclude ALGO=gcds
 
@@ -515,7 +583,7 @@ conclude-deepcde:
 help:
 	@echo ""
 	@echo "======================================================="
-	@echo "   Synthetic Data Pipeline (DDPM, Flex, GCDS, DeepCDE, HyAlg)"
+	@echo "   Synthetic Data Pipeline (DDPM, Flex, GCDS, DeepCDE, HyAlg, HY)"
 	@echo "======================================================="
 	@echo ""
 	@echo "Usage:"
