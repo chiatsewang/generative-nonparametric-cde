@@ -7,8 +7,9 @@
 		train-hy-single sample-hy-single train-hy sample-hy \
 		train-deepcde-single sample-deepcde-single train-deepcde sample-deepcde \
 		train-flex-single sample-flex-single train-flex sample-flex \
+		train-ctmtf-single train-ctmtf sample-ctmtf-single sample-ctmtf \
 		conclude-single conclude \
-		conclude-ddpm conclude-gcds conclude-hyalg conclude-hy conclude-deepcde conclude-flex \
+		conclude-ddpm conclude-gcds conclude-hyalg conclude-hy conclude-deepcde conclude-flex conclude-ctmtf \
 		train-srm-single sample-srm-single train-srm sample-srm eval-srm conclude-srm \
 
 # === General Python call with local imports ===
@@ -72,6 +73,7 @@ HY_TARGET_MODELS      := $(filter $(HY_APPLY_MODELS),$(TARGET_MODELS))
 DEEPCDE_TARGET_MODELS := $(filter $(DEEPCDE_APPLY_MODELS),$(TARGET_MODELS))
 FLEX_TARGET_MODELS    := $(filter $(FLEX_APPLY_MODELS),$(TARGET_MODELS))
 SRM_TARGET_MODELS     := $(filter $(SRM_APPLY_MODELS),$(TARGET_MODELS))
+CTMTF_TARGET_MODELS   := $(filter $(CTMTF_APPLY_MODELS),$(TARGET_MODELS))
 
 
 #
@@ -523,6 +525,53 @@ sample-srm:
 	@$(SRM_SAMPLE_ALL_CMD) echo "All SRM Sampling Completed!"
 
 
+# =====================
+#    CTMTF training
+# =====================
+TRAIN_CTMTF_SCRIPT = scripts.train_ctmtf
+
+# ---- single run ----
+train-ctmtf-single:
+ifneq ($(filter $(DATA_MODEL),$(CTMTF_APPLY_MODELS)),)
+	$(PYTHON) -m $(TRAIN_CTMTF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED)
+else
+	@echo "CTMTF is not applied to DATA_MODEL=$(DATA_MODEL)"
+endif
+
+# ---- all runs ----
+CTMTF_TRAIN_ALL_CMD := \
+	$(foreach m,$(CTMTF_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) train-ctmtf-single DATA_MODEL=$(m) SEED=$(s) && ))
+
+train-ctmtf:
+	@$(CTMTF_TRAIN_ALL_CMD) echo "All CTMTF Training Completed!"
+
+
+# =====================
+#    CTMTF sampling
+# =====================
+SAMPLE_CTMTF_SCRIPT = scripts.sample_ctmtf
+
+# ---- single run ----
+sample-ctmtf-single:
+ifneq ($(filter $(DATA_MODEL),$(CTMTF_APPLY_MODELS)),)
+	$(PYTHON) -m $(SAMPLE_CTMTF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+		--num-samples $(SAMPLES)
+else
+	@echo "CTMTF is not applied to DATA_MODEL=$(DATA_MODEL)"
+endif
+
+# ---- all runs ----
+CTMTF_SAMPLE_ALL_CMD := \
+	$(foreach m,$(CTMTF_TARGET_MODELS), \
+		$(foreach s,$(TARGET_SEEDS), \
+			$(MAKE) sample-ctmtf-single DATA_MODEL=$(m) SEED=$(s) && ))
+
+sample-ctmtf:
+	@$(CTMTF_SAMPLE_ALL_CMD) echo "All CTMTF Sampling Completed!"
+
+
 #=====================
 #	Evaluation
 # =====================
@@ -561,6 +610,8 @@ eval-deepcde:
 
 eval-srm:
 	$(MAKE) eval ALGO=srm DATA_MODEL="$(SRM_TARGET_MODELS)"
+eval-ctmtf:
+	$(MAKE) eval ALGO=ctmtf DATA_MODEL="$(CTMTF_TARGET_MODELS)"
 
 # ---- all runs ----
 # Use shell loops rather than expanding every algorithm/model/seed combination
@@ -577,6 +628,7 @@ eval:
 			flex)    models="$(FLEX_TARGET_MODELS)" ;; \
 			deepcde) models="$(DEEPCDE_TARGET_MODELS)" ;; \
 			srm)     models="$(SRM_TARGET_MODELS)" ;; \
+			ctmtf)   models="$(CTMTF_TARGET_MODELS)" ;; \
 			*) echo "Unknown ALGO=$$algo"; exit 1 ;; \
 		esac; \
 		if [ -z "$$models" ]; then \
@@ -639,6 +691,8 @@ conclude-deepcde:
 
 conclude-srm:
 	$(MAKE) conclude ALGO=srm
+conclude-ctmtf:
+	$(MAKE) conclude ALGO=ctmtf
 
 
 
