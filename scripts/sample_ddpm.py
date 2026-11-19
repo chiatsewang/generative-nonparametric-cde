@@ -3,13 +3,15 @@ import os
 
 import numpy as np
 import torch
+import yaml
 from tqdm import tqdm
 
-from condgen_benchmark.methods.ddpm.core import Diffusion
+from condgen_benchmark.methods.ddpm.diffusion import Diffusion
+from condgen_benchmark.methods.ddpm.model import (
+    ConditionalMLPScalarT,
+    parse_hidden_dims,
+)
 from condgen_benchmark.methods.ddpm.sampler import sample_ddpm
-
-# from condgen_benchmark.models.conditional_mlp import ConditionalMLP
-from condgen_benchmark.models.conditional_mlp import ConditionalMLPScalarT
 
 
 def load_test_data(mode, seed):
@@ -87,15 +89,40 @@ def main(args):
     X_dim = X.shape[1]
     Y_dim = Y_true.shape[1]
 
-    # model = ConditionalMLP(Y_dim, X_dim).to(device)
-    model = ConditionalMLPScalarT(X_dim, Y_dim, hidden_dim=args.hidden_dim).to(
-        device
+    workspace_dir = os.path.join(
+        "workspaces", "ddpm", args.data_name, f"seed_{args.seed}"
     )
+    config_path = os.path.join(workspace_dir, "config.yaml")
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    if "hidden_dims" in config:
+        hidden_dims = parse_hidden_dims(config["hidden_dims"])
+    elif all(
+        key in config for key in ("hidden_dim1", "hidden_dim2", "hidden_dim3")
+    ):
+        hidden_dims = [
+            int(config["hidden_dim1"]),
+            int(config["hidden_dim2"]),
+            int(config["hidden_dim3"]),
+        ]
+    elif "hidden_dim" in config:
+        hidden_dim = int(config["hidden_dim"])
+        hidden_dims = [hidden_dim, hidden_dim // 2]
+    else:
+        hidden_dims = parse_hidden_dims(None)
+
+    timesteps = int(config.get("timesteps", 300))
+    print(f"[DDPM] hidden_dims={hidden_dims}")
+    print(f"[DDPM] timesteps={timesteps}")
+
+    model = ConditionalMLPScalarT(
+        X_dim,
+        Y_dim,
+        hidden_dims=hidden_dims,
+    ).to(device)
     ckpt_path = os.path.join(
-        "workspaces",
-        "ddpm",
-        args.data_name,
-        f"seed_{args.seed}",
+        workspace_dir,
         f"model_{args.model_choice}.pth",
     )
     if not os.path.exists(ckpt_path):
@@ -107,7 +134,7 @@ def main(args):
     print(f"Loaded model from {ckpt_path} successfully.")
     model.eval()
 
-    diffusion = Diffusion(timesteps=args.timesteps, device=device)
+    diffusion = Diffusion(timesteps=timesteps, device=device)
 
     Y_hat = sample_multiple_batches(
         model=model,
@@ -149,10 +176,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230, help="Dataset seed")
     parser.add_argument("--data-name", type=str, default="U1")
-    parser.add_argument("--timesteps", type=int, default=300)
     parser.add_argument("--num-samples", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument("--hidden-dim", type=int, default=50)
     parser.add_argument(
         "--model-choice",
         type=str,
