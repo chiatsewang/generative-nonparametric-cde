@@ -3,9 +3,8 @@ import time
 import torch
 from torch.optim import Adam
 
+from condgen_benchmark.methods.gcds.loss import gcds_loss
 from condgen_benchmark.utils.gpu_batching import batch_indices
-
-from .loss import gcds_loss
 
 
 def train_gcds(

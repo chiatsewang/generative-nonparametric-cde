@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .deepcde_pytorch import cde_layer
+from condgen_benchmark.methods.deepcde.deepcde_pytorch import cde_layer
 
 
 def parse_hidden_dims(hidden_dims):

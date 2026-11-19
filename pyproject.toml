@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "generative-nonparametric-cde"
-version = "1.5.1"
+version = "1.5.2"
 description = "A benchmark comparing traditional statistical methods and generative modeling approaches for conditional density estimation"
 authors = [{name = "Chiatse Wang", email = "chiatsewang@stat.sinica.edu.tw"}]
 readme = "README.md"
@@ -50,8 +50,12 @@ select = [
     "W",    # pycodestyle warnings
     "F",    # Pyflakes
     "I",    # isort
+    "TID252",  # ban relative imports
 ]
 
 ignore = [
     "E501",   # line too long, handled by black
 ]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
