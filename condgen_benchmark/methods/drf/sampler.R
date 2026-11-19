@@ -82,7 +82,7 @@ sample_from_weights <- function(weights, Y_train, num_samples, seed) {
 args <- parse_args()
 
 if (!is.null(args$python_bin)) {
-  reticulate::use_python(normalizePath(args$python_bin, winslash = "/", mustWork = TRUE), required = TRUE)
+  reticulate::use_python(args$python_bin, required = TRUE)
 }
 
 required <- c("model", "train_npz", "test_npz", "out", "seed", "num_samples")

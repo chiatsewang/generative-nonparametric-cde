@@ -38,7 +38,7 @@ save_train_npz <- function(np, path, X_train, Y_train, X_valid, Y_valid) {
 args <- parse_args()
 
 if (!is.null(args$python_bin)) {
-  reticulate::use_python(normalizePath(args$python_bin, winslash = "/", mustWork = TRUE), required = TRUE)
+  reticulate::use_python(args$python_bin, required = TRUE)
 }
 
 required <- c("train_npz", "valid_npz", "model_out", "train_data_out", "seed",
