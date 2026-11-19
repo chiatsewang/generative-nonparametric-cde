@@ -9,7 +9,7 @@ from condgen_benchmark.data.synthetic import get_synthetic_data_class
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            "Generate synthetic datasets (U1–U7 and M1–M4) with fixed "
+            "Generate synthetic datasets (U1–U7, O7 and M1–M4) with fixed "
             "train/valid/test sizes and save under seed-specific directories."
         )
     )
@@ -24,6 +24,7 @@ def parse_args():
             "U5",
             "U6",
             "U7",
+            "O7",
             "M1",
             "M2",
             "M3",
@@ -66,12 +67,6 @@ def parse_args():
         default=None,
         help="Optional data-generation parameter.",
     )
-    parser.add_argument(
-        "--c",
-        type=float,
-        default=None,
-        help="Optional data-generation parameter (currently used only in U7).",
-    )
 
     return parser.parse_args()
 
@@ -94,7 +89,6 @@ def main():
     # Optional parameter
     allowed_args = [
         "seed",
-        "c",
         "gamma",
     ]  # if necessary, you can add other parameters
     init_kwargs = {
