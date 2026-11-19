@@ -382,6 +382,7 @@ train-flex:
 # =====================
 
 SAMPLE_FLEX_SCRIPT = scripts.sample_flex
+# Python default: tuned model OFF; Make enables it via --tuned-model.
 FLEX_TUNED_MODEL ?= --tuned-model
 
 # --- single run ---
