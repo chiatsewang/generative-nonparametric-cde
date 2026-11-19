@@ -13,7 +13,10 @@ import yaml
 from condgen_benchmark.methods.deepcde.bases.cosine import CosineBasis
 from condgen_benchmark.methods.deepcde.bases.wavelet import WaveletBasis
 from condgen_benchmark.methods.deepcde.deepcde_pytorch import cde_loss
-from condgen_benchmark.methods.deepcde.models import DeepCDEModel
+from condgen_benchmark.methods.deepcde.models import (
+    DeepCDEModel,
+    parse_hidden_dims,
+)
 from condgen_benchmark.methods.deepcde.utils import box_transform
 from condgen_benchmark.utils.gpu_batching import batch_indices
 
@@ -89,9 +92,13 @@ def main(args):
     y_val_basis = torch.from_numpy(y_val_basis).to(device)
 
     # model and optimizer
-    model = DeepCDEModel(input_dim=X_train.shape[1], n_basis=args.n_basis).to(
-        device
-    )
+    args.hidden_dims = parse_hidden_dims(args.hidden_dims)
+    print(f"[DeepCDE] hidden_dims={args.hidden_dims}")
+    model = DeepCDEModel(
+        input_dim=X_train.shape[1],
+        n_basis=args.n_basis,
+        hidden_dims=args.hidden_dims,
+    ).to(device)
     criterion = cde_loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
@@ -228,6 +235,12 @@ if __name__ == "__main__":
     parser.add_argument("--aux", type=int, default=15)
     parser.add_argument("--lr", type=float, default=1e-4)  # learning rate
     parser.add_argument(
+        "--hidden-dims",
+        type=str,
+        default="32,64,32",
+        help="Comma-separated hidden layer sizes, e.g. 32,64,32.",
+    )
+    parser.add_argument(
         "--early-stop",
         action="store_true",
         help="enable patience-based early stopping",
@@ -235,7 +248,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--patience",
         type=int,
-        default=20,
+        default=50,
         help="epochs w/o improvement before stop",
     )  # patience: number of steps to wait for the next improvement
 
