@@ -4,7 +4,7 @@ Conditional Generation Benchmark Framework
 A unified framework for evaluating conditional density estimation algorithms.
 """
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 __author__ = "Chiatse Wang"
 __email__ = "chiatsewang@stat.sinica.edu.tw"
 

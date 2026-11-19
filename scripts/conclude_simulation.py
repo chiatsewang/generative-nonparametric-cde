@@ -19,7 +19,7 @@ def parse_args():
         "--algorithm",
         type=str,
         default="ddpm",
-        help="Algorithm name (e.g., ddpm, hyalg)",
+        help="Algorithm name (e.g., ddpm, hy)",
     )
     return parser.parse_args()
 
