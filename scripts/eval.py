@@ -91,8 +91,8 @@ def evaluate(Ys_p_hat, mu_true, sigma_true, Ys_p_true):
 
     w_mean = np.mean(w_distances)
 
-    # Evaluation-only Energy Score: computed on the selected GPU, without
-    # splitting test covariates. The U-statistic excludes fitted self-pairs.
+    # Evaluation-only Energy Score, computed on the selected device in chunks
+    # of test covariates. The U-statistic excludes fitted self-pairs.
     escore_mean = expected_energy_score(Ys_p_hat, Ys_p_true)
 
     return {
