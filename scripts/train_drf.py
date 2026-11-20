@@ -6,14 +6,8 @@ from pathlib import Path
 import yaml
 
 
-def dataset_path(data_name: str, seed: int, split: str) -> Path:
-    return (
-        Path("datasets")
-        / "synthetic"
-        / data_name
-        / f"seed_{seed}"
-        / f"{split}.npz"
-    )
+def dataset_path(data_dir: str, data_name: str, seed: int, split: str) -> Path:
+    return Path(data_dir) / data_name / f"seed_{seed}" / f"{split}.npz"
 
 
 def main(args):
@@ -22,8 +16,8 @@ def main(args):
         project_root / "condgen_benchmark" / "methods" / "drf" / "trainer.R"
     )
 
-    train_npz = dataset_path(args.data_name, args.seed, "train")
-    valid_npz = dataset_path(args.data_name, args.seed, "valid")
+    train_npz = dataset_path(args.data_dir, args.data_name, args.seed, "train")
+    valid_npz = dataset_path(args.data_dir, args.data_name, args.seed, "valid")
 
     if not train_npz.exists():
         raise FileNotFoundError(f"Dataset not found: {train_npz}")
@@ -80,6 +74,12 @@ if __name__ == "__main__":
 
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     parser.add_argument("--num-trees", type=int, default=2000)
     parser.add_argument("--min-node-size", type=int, default=15)
     parser.add_argument("--splitting-rule", type=str, default="FourierMMD")

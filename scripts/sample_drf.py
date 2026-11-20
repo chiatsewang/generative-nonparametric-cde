@@ -4,14 +4,8 @@ import sys
 from pathlib import Path
 
 
-def dataset_path(data_name: str, seed: int, split: str) -> Path:
-    return (
-        Path("datasets")
-        / "synthetic"
-        / data_name
-        / f"seed_{seed}"
-        / f"{split}.npz"
-    )
+def dataset_path(data_dir: str, data_name: str, seed: int, split: str) -> Path:
+    return Path(data_dir) / data_name / f"seed_{seed}" / f"{split}.npz"
 
 
 def main(args):
@@ -20,8 +14,8 @@ def main(args):
         project_root / "condgen_benchmark" / "methods" / "drf" / "sampler.R"
     )
 
-    test_npz = dataset_path(args.data_name, args.seed, "test")
-    train_npz = dataset_path(args.data_name, args.seed, "train")
+    test_npz = dataset_path(args.data_dir, args.data_name, args.seed, "test")
+    train_npz = dataset_path(args.data_dir, args.data_name, args.seed, "train")
 
     if not test_npz.exists():
         raise FileNotFoundError(f"Test dataset not found: {test_npz}")
@@ -68,6 +62,12 @@ if __name__ == "__main__":
 
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     parser.add_argument("--num-samples", type=int, default=2000)
 
     main(parser.parse_args())

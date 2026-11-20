@@ -13,10 +13,8 @@ from condgen_benchmark.methods.srm.model import SRMGenerator, parse_hidden_dims
 from condgen_benchmark.methods.srm.trainer import train_srm
 
 
-def load_dataset(data_name, split, seed):
-    path = os.path.join(
-        "datasets", "synthetic", data_name, f"seed_{seed}", f"{split}.npz"
-    )
+def load_dataset(data_dir, data_name, split, seed):
+    path = os.path.join(data_dir, data_name, f"seed_{seed}", f"{split}.npz")
     data = np.load(path)
     X = torch.tensor(data["X"], dtype=torch.float32)
     Y = torch.tensor(data["Y"], dtype=torch.float32)
@@ -45,8 +43,12 @@ def main(args):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    X_train, Y_train = load_dataset(args.data_name, "train", args.seed)
-    X_val, Y_val = load_dataset(args.data_name, "valid", args.seed)
+    X_train, Y_train = load_dataset(
+        args.data_dir, args.data_name, "train", args.seed
+    )
+    X_val, Y_val = load_dataset(
+        args.data_dir, args.data_name, "valid", args.seed
+    )
 
     Y_train, y_mean, y_std = normalize_tensor(Y_train)
     Y_val = apply_normalization(Y_val, y_mean, y_std)
@@ -146,6 +148,12 @@ if __name__ == "__main__":
     # Match the existing benchmark scripts: default seed=230 and data-name=U1.
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
 
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=500)

@@ -11,10 +11,8 @@ from cdetools.cde_loss import cde_loss
 from flexcode.regression_models import NN, RandomForest  # NN = k-NN
 
 
-def load_dataset(mode: str, split: str, seed: int):
-    path = os.path.join(
-        "datasets", "synthetic", mode, f"seed_{seed}", f"{split}.npz"
-    )
+def load_dataset(data_dir, mode: str, split: str, seed: int):
+    path = os.path.join(data_dir, mode, f"seed_{seed}", f"{split}.npz")
     data = np.load(path)
     x = data["X"]  # (n, p)
     y = data["Y"]  # (n,) or (n, 1) or (n, d)
@@ -51,8 +49,12 @@ def main(args):
     torch.manual_seed(args.seed)
 
     # load training and validation data
-    X_train, Y_train = load_dataset(args.data_name, "train", args.seed)
-    X_valid, Y_valid = load_dataset(args.data_name, "valid", args.seed)
+    X_train, Y_train = load_dataset(
+        args.data_dir, args.data_name, "train", args.seed
+    )
+    X_valid, Y_valid = load_dataset(
+        args.data_dir, args.data_name, "valid", args.seed
+    )
 
     # show dataset info (FlexCode)
     print(
@@ -185,6 +187,12 @@ if __name__ == "__main__":
     )
     p.add_argument("--seed", type=int, default=230)
     p.add_argument("--data-name", type=str, default="U1")
+    p.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
 
     # select basis
     p.add_argument("--basis", type=str, default="cosine")

@@ -17,10 +17,8 @@ except Exception:
 
 
 # Data loading
-def load_test_dataset(mode: str, seed: int):
-    path = os.path.join(
-        "datasets", "synthetic", mode, f"seed_{seed}", "test.npz"
-    )
+def load_test_dataset(data_dir, mode: str, seed: int):
+    path = os.path.join(data_dir, mode, f"seed_{seed}", "test.npz")
     data = np.load(path)
     X = data["X"]  # (n, p)
     Y_true = data["Y"]  # (n,) or (n,1)
@@ -120,7 +118,9 @@ def main(args):
     torch.manual_seed(args.seed)
 
     # Load test set
-    X_cond, Y_true = load_test_dataset(args.data_name, args.seed)
+    X_cond, Y_true = load_test_dataset(
+        args.data_dir, args.data_name, args.seed
+    )
 
     # Load trained model (with embedded y_grid)
     ws = Path("workspaces") / "flex" / args.data_name / f"seed_{args.seed}"
@@ -174,6 +174,12 @@ if __name__ == "__main__":
     )
     p.add_argument("--seed", type=int, default=230)
     p.add_argument("--data-name", type=str, default="U1")
+    p.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     p.add_argument("--num-samples", type=int, default=2000)
     p.add_argument(
         "--tuned-model",

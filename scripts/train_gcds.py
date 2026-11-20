@@ -16,10 +16,8 @@ from condgen_benchmark.methods.gcds.core import (
 from condgen_benchmark.methods.gcds.trainer import train_gcds
 
 
-def load_dataset(mode, split, seed):
-    path = os.path.join(
-        "datasets", "synthetic", mode, f"seed_{seed}", f"{split}.npz"
-    )
+def load_dataset(data_dir, mode, split, seed):
+    path = os.path.join(data_dir, mode, f"seed_{seed}", f"{split}.npz")
     data = np.load(path)
     X = torch.tensor(data["X"], dtype=torch.float32)
     Y = torch.tensor(data["Y"], dtype=torch.float32)
@@ -46,8 +44,12 @@ def main(args):
         torch.backends.cudnn.benchmark = True
     print(f"[Device] Using {device}")
 
-    X_train, Y_train = load_dataset(args.data_name, "train", args.seed)
-    X_val, Y_val = load_dataset(args.data_name, "valid", args.seed)
+    X_train, Y_train = load_dataset(
+        args.data_dir, args.data_name, "train", args.seed
+    )
+    X_val, Y_val = load_dataset(
+        args.data_dir, args.data_name, "valid", args.seed
+    )
 
     Y_train, y_mean, y_std = normalize_tensor(Y_train)
     Y_val = apply_normalization(Y_val, y_mean, y_std)
@@ -142,6 +144,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument(

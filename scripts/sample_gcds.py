@@ -8,7 +8,7 @@ from tqdm import tqdm
 from condgen_benchmark.methods.gcds.core import GCDSGenerator
 
 
-def load_test_data(mode, seed):
+def load_test_data(data_dir, mode, seed):
     """
     Load test dataset.
 
@@ -16,9 +16,7 @@ def load_test_data(mode, seed):
         X: torch.Tensor of shape [N, X_dim]
         Y_true: np.ndarray of shape [N, Y_dim]
     """
-    path = os.path.join(
-        "datasets", "synthetic", mode, f"seed_{seed}", "test.npz"
-    )
+    path = os.path.join(data_dir, mode, f"seed_{seed}", "test.npz")
     data = np.load(path)
     X = torch.tensor(data["X"], dtype=torch.float32)
     Y_true = data["Y"]
@@ -75,7 +73,7 @@ def main(args):
     print(f"[Device] Using {device}")
 
     X, Y_true = load_test_data(
-        args.data_name, args.seed
+        args.data_dir, args.data_name, args.seed
     )  # [N, x_dim], [N, y_dim]
     X_dim = X.shape[1]
     Y_dim = Y_true.shape[1]
@@ -142,6 +140,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     parser.add_argument("--num-samples", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--noise-dim", type=int, default=3)

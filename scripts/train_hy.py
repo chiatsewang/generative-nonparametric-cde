@@ -13,9 +13,13 @@ from condgen_benchmark.methods.hy.tuning import fit_and_tune
 def main(args):
     if (args.h is None) != (args.H is None):
         raise ValueError("Specify --h and --H together, or omit both")
-    X_train, Y_train = load_split(args.data_name, args.seed, "train")
+    X_train, Y_train = load_split(
+        args.data_dir, args.data_name, args.seed, "train"
+    )
     if args.h is None:
-        X_valid, Y_valid = load_split(args.data_name, args.seed, "valid")
+        X_valid, Y_valid = load_split(
+            args.data_dir, args.data_name, args.seed, "valid"
+        )
     else:
         X_valid = Y_valid = None
 
@@ -100,6 +104,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     parser.add_argument("--radius", type=float, default=1.0)
     parser.add_argument(
         "--h",

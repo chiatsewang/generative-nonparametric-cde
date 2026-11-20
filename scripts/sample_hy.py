@@ -13,8 +13,12 @@ from condgen_benchmark.methods.hy.sampler import (
 
 
 def main(args):
-    X_train, Y_train = load_split(args.data_name, args.seed, "train")
-    X_test, Y_true = load_split(args.data_name, args.seed, "test")
+    X_train, Y_train = load_split(
+        args.data_dir, args.data_name, args.seed, "train"
+    )
+    X_test, Y_true = load_split(
+        args.data_dir, args.data_name, args.seed, "test"
+    )
     workspace = os.path.join(
         "workspaces", "hy", args.data_name, f"seed_{args.seed}"
     )
@@ -45,6 +49,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     parser.add_argument("--num-samples", type=int, default=2000)
     parser.add_argument("--ny", type=int, default=200)
     main(parser.parse_args())

@@ -103,7 +103,7 @@ seed_now <- as.integer(args$seed)
 project_root <- getwd()
 
 data_dir <- file.path(
-  project_root, "datasets", "synthetic", data_name, paste0("seed_", seed_now)
+  args$data_dir, data_name, paste0("seed_", seed_now)
 )
 workspace_dir <- file.path(
   project_root, "workspaces", "ctmtf", data_name, paste0("seed_", seed_now)
