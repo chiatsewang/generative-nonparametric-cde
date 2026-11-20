@@ -100,6 +100,21 @@ make eval-hy
 make conclude-hy
 ```
 
+To run some seeds rather than all 50, override `ALL_SEEDS` on the command
+line. For example, the following runs DRF on M2 for the first three seeds and
+writes the summary to `workspaces/drf_M2.xlsx`.
+
+```bash
+make generate-all DATA_MODEL=M2 ALL_SEEDS="230 460 690"
+make train-drf DATA_MODEL=M2 ALL_SEEDS="230 460 690"
+make sample-drf DATA_MODEL=M2 ALL_SEEDS="230 460 690"
+make eval-drf DATA_MODEL=M2 ALL_SEEDS="230 460 690"
+make conclude-drf DATA_MODEL=M2
+```
+
+`conclude` summarizes whichever `seed_*` folders it finds, so it needs no seed
+list.
+
 `make eval` evaluates every method in `ALL_ALGOS`, or only the one named by
 `ALGO`. `make conclude` summarizes all methods and models, and accepts `ALGO`
 and `DATA_MODEL` as filters. `make help` lists the targets.
@@ -350,7 +365,9 @@ responses by linear interpolation of the inverse at uniform draws, which are
 clipped to the smallest and largest estimated probability levels. When the local-linear
 weights cannot be normalized, the draws equal the mean training response.
 Tuning and final sampling share this sampler, which runs on the CPU with
-NumPy and Numba.
+NumPy. To score a candidate during tuning, it computes the Energy Score of
+each estimated distribution exactly, without drawing samples, in a function
+compiled with Numba.
 
 ### Saved files
 
