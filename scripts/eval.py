@@ -138,8 +138,7 @@ def main(args):
     # Read the method-independent oracle saved at data-generation time.
     # It was computed using the SAME test X_i but fresh independent true Y.
     test_path = os.path.join(
-        "datasets",
-        "synthetic",
+        args.data_dir,
         args.data_name,
         f"seed_{args.seed}",
         "test.npz",
@@ -203,6 +202,12 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=230, help="Dataset seed")
     parser.add_argument(
         "--data-name", type=str, default="U1", help="Synthetic data model"
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets (default: datasets/synthetic)",
     )
     parser.add_argument(
         "--algorithm",

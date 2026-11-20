@@ -609,7 +609,7 @@ ifeq ($(strip $(ALGO)),)
 	@echo "Please specify ALGO (e.g., ALGO=flex)"
 else
 	@echo evaluating data for this configuration: ALGO=$(ALGO), DATA_MODEL=$(DATA_MODEL), SEED=$(SEED)
-	$(PYTHON) -m $(EVAL_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --algorithm $(ALGO)
+	$(PYTHON) -m $(EVAL_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --algorithm $(ALGO) --data-dir $(OUTDIR)
 endif
 
 # ---- algorithm shortcuts ----
