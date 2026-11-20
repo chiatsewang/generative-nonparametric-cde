@@ -16,11 +16,9 @@ from condgen_benchmark.methods.deepcde.models import (
 )
 
 
-def load_test_dataset(mode: str, seed: int):
+def load_test_dataset(data_dir, mode: str, seed: int):
     """Load X (cond) and Y (true) from test split as numpy arrays."""
-    path = os.path.join(
-        "datasets", "synthetic", mode, f"seed_{seed}", "test.npz"
-    )
+    path = os.path.join(data_dir, mode, f"seed_{seed}", "test.npz")
     data = np.load(path)
     X = data["X"]  # (N, d)
     Y = data["Y"]  # (N,) or (N,1)
@@ -81,7 +79,7 @@ def main(args):
         torch.backends.cudnn.benchmark = True
 
     # load test data
-    X_np, Y_true = load_test_dataset(args.data_name, args.seed)
+    X_np, Y_true = load_test_dataset(args.data_dir, args.data_name, args.seed)
     N, d = X_np.shape
     X_t = torch.tensor(X_np, dtype=torch.float32)
 
@@ -198,6 +196,12 @@ if __name__ == "__main__":
     )
     p.add_argument("--seed", type=int, default=230)
     p.add_argument("--data-name", type=str, default="U1")
+    p.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     p.add_argument(
         "--num-samples", type=int, default=2000, help="samples per X"
     )

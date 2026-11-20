@@ -10,10 +10,8 @@ from condgen_benchmark.methods.srm.model import SRMGenerator, parse_hidden_dims
 from condgen_benchmark.methods.srm.sampler import denormalize_y, sample_srm
 
 
-def load_test_dataset(data_name, seed):
-    path = os.path.join(
-        "datasets", "synthetic", data_name, f"seed_{seed}", "test.npz"
-    )
+def load_test_dataset(data_dir, data_name, seed):
+    path = os.path.join(data_dir, data_name, f"seed_{seed}", "test.npz")
     data = np.load(path)
 
     X = torch.tensor(data["X"], dtype=torch.float32)
@@ -50,7 +48,9 @@ def main(args):
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
-    X_test, Y_true = load_test_dataset(args.data_name, args.seed)
+    X_test, Y_true = load_test_dataset(
+        args.data_dir, args.data_name, args.seed
+    )
     y_mean, y_std = load_normalization_params(workspace_dir)
     y_dim = int(np.asarray(y_mean).reshape(1, -1).shape[1])
     x_dim = X_test.shape[1]
@@ -106,6 +106,12 @@ if __name__ == "__main__":
 
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
 
     parser.add_argument("--num-samples", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=128)

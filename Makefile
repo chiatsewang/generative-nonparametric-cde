@@ -160,7 +160,7 @@ DDPM_NORMALIZATION ?= --normalization
 
 # ---- single run ----
 train-ddpm-single:
-	$(PYTHON) -m $(TRAIN_DDPM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(TRAIN_DDPM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--timesteps $(DDPM_TIME_STEP) \
 		--batch-size $(DDPM_BATCH) \
 		--epochs $(DDPM_EPOCHS) \
@@ -190,7 +190,7 @@ DDPM_MODEL_CHOICE ?= best
 
 # ---- single run ----
 sample-ddpm-single:
-	$(PYTHON) -m $(SAMPLE_DDPM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_DDPM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES) \
 		--batch-size $(DDPM_BATCH) \
 		--model-choice $(DDPM_MODEL_CHOICE)
@@ -219,7 +219,7 @@ GCDS_HIDDEN_DIM ?= 50
 
 # ---- single run ----
 train-gcds-single:
-	$(PYTHON) -m $(TRAIN_GCDS_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(TRAIN_GCDS_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--batch-size $(GCDS_BATCH) \
 		--epochs $(GCDS_EPOCHS) \
 		--lr $(GCDS_LR) \
@@ -245,7 +245,7 @@ GCDS_MODEL_CHOICE ?= last
 
 # ---- single run ----
 sample-gcds-single:
-	$(PYTHON) -m $(SAMPLE_GCDS_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_GCDS_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES) \
 		--batch-size $(GCDS_BATCH) \
 		--noise-dim $(GCDS_NOISE_DIM) \
@@ -281,7 +281,7 @@ HY_ADAM_PATIENCE ?= 30
 
 train-hy-single:
 ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
-	$(PYTHON) -m $(TRAIN_HY_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(TRAIN_HY_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--radius $(HY_RADIUS) \
 		--n-sub-val $(HY_N_SUB_VAL) \
 		--ny-tuning $(HY_NUM_Y_GRID_TUNING) \
@@ -309,7 +309,7 @@ HY_NUM_Y_GRID ?= 200
 
 sample-hy-single:
 ifneq ($(filter $(DATA_MODEL),$(HY_APPLY_MODELS)),)
-	$(PYTHON) -m $(SAMPLE_HY_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_HY_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES) \
 		--ny $(HY_NUM_Y_GRID)
 else
@@ -342,7 +342,7 @@ DEEPCDE_NUM_BASIS ?= 31
 # --- single run ---
 train-deepcde-single:
 ifneq ($(filter $(DATA_MODEL),$(DEEPCDE_APPLY_MODELS)),)
-	$(PYTHON) -m $(TRAIN_DEEPCDE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(TRAIN_DEEPCDE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--basis $(DEEPCDE_BASIS) \
 		--n-basis $(DEEPCDE_NUM_BASIS) \
 		--hidden-dims $(DEEPCDE_HIDDEN_DIMS) \
@@ -377,7 +377,7 @@ DEEPCDE_NUM_YGRID ?= 200
 # --- single run ---
 sample-deepcde-single:
 ifneq ($(filter $(DATA_MODEL),$(DEEPCDE_APPLY_MODELS)),)
-	$(PYTHON) -m $(SAMPLE_DEEPCDE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_DEEPCDE_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES) \
 		--ny $(DEEPCDE_NUM_YGRID) \
 		--batch-size $(DEEPCDE_BATCH) \
@@ -410,7 +410,7 @@ FLEX_NUM_Y_GRID ?= 200
 # --- single run ---
 train-flex-single:
 ifneq ($(filter $(DATA_MODEL),$(FLEX_APPLY_MODELS)),)
-	$(PYTHON) -m $(TRAIN_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(TRAIN_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--basis $(FLEX_BASIS) \
 		--max-basis $(FLEX_MAX_BASIS) \
 		--reg $(FLEX_REG_METHOD) \
@@ -440,7 +440,7 @@ FLEX_TUNED_MODEL ?= --tuned-model
 # --- single run ---
 sample-flex-single:
 ifneq ($(filter $(DATA_MODEL),$(FLEX_APPLY_MODELS)),)
-	$(PYTHON) -m $(SAMPLE_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_FLEX_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES) \
 		$(FLEX_TUNED_MODEL)
 else
@@ -473,7 +473,7 @@ SRM_EARLY_STOP ?= --early-stop
 
 # ---- single run ----
 train-srm-single:
-	$(PYTHON) -m $(TRAIN_SRM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(TRAIN_SRM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--batch-size $(SRM_BATCH) \
 		--epochs $(SRM_EPOCHS) \
 		--lr $(SRM_LR) \
@@ -499,7 +499,7 @@ SAMPLE_SRM_SCRIPT = scripts.sample_srm
 
 # ---- single run ----
 sample-srm-single:
-	$(PYTHON) -m $(SAMPLE_SRM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_SRM_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES) \
 		--batch-size $(SRM_BATCH)
 
@@ -523,7 +523,7 @@ TRAIN_CTMTF_SCRIPT = scripts.train_ctmtf
 # ---- single run ----
 train-ctmtf-single:
 ifneq ($(filter $(DATA_MODEL),$(CTMTF_APPLY_MODELS)),)
-	$(PYTHON) -m $(TRAIN_CTMTF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED)
+	$(PYTHON) -m $(TRAIN_CTMTF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR)
 else
 	@echo "CTMTF is not applied to DATA_MODEL=$(DATA_MODEL)"
 endif
@@ -546,7 +546,7 @@ SAMPLE_CTMTF_SCRIPT = scripts.sample_ctmtf
 # ---- single run ----
 sample-ctmtf-single:
 ifneq ($(filter $(DATA_MODEL),$(CTMTF_APPLY_MODELS)),)
-	$(PYTHON) -m $(SAMPLE_CTMTF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_CTMTF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES)
 else
 	@echo "CTMTF is not applied to DATA_MODEL=$(DATA_MODEL)"
@@ -569,7 +569,7 @@ TRAIN_DRF_SCRIPT = scripts.train_drf
 
 # ---- single run ----
 train-drf-single:
-	$(PYTHON) -m $(TRAIN_DRF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED)
+	$(PYTHON) -m $(TRAIN_DRF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR)
 
 # ---- all runs ----
 DRF_TRAIN_ALL_CMD := \
@@ -588,7 +588,7 @@ SAMPLE_DRF_SCRIPT = scripts.sample_drf
 
 # ---- single run ----
 sample-drf-single:
-	$(PYTHON) -m $(SAMPLE_DRF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) \
+	$(PYTHON) -m $(SAMPLE_DRF_SCRIPT) --data-name $(DATA_MODEL) --seed $(SEED) --data-dir $(OUTDIR) \
 		--num-samples $(SAMPLES)
 
 # ---- all runs ----

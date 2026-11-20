@@ -19,7 +19,7 @@ def get_y_dim(npz_path: Path) -> int:
 
 def main(args: argparse.Namespace) -> None:
     data_dir = (
-        ROOT / "datasets" / "synthetic" / args.data_name / f"seed_{args.seed}"
+        Path(args.data_dir).resolve() / args.data_name / f"seed_{args.seed}"
     )
     test_path = data_dir / "test.npz"
 
@@ -49,6 +49,8 @@ def main(args: argparse.Namespace) -> None:
         str(r_sampler),
         "--data_name",
         args.data_name,
+        "--data_dir",
+        str(Path(args.data_dir).resolve()),
         "--seed",
         str(args.seed),
         "--num_samples",
@@ -73,5 +75,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=230)
     parser.add_argument("--data-name", type=str, default="U1")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="datasets/synthetic",
+        help="Folder holding the generated datasets",
+    )
     parser.add_argument("--num-samples", type=int, default=2000)
     main(parser.parse_args())
