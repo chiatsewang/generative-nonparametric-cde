@@ -1,4 +1,4 @@
-.PHONY: all U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4 clean help
+.PHONY: all U1 U2 U3 U4 U5 U6 U7 M1 M2 M3 M4 clean help install-r
 .PHONY: generate generate-all
 .PHONY: eval eval-single
 .PHONY: eval-ddpm eval-gcds eval-hy eval-deepcde eval-flex eval-srm eval-ctmtf eval-drf
@@ -133,6 +133,9 @@ GENERATE_ALL_CMD := $(foreach m,$(TARGET_MODELS),$(foreach s,$(TARGET_SEEDS),$(M
 generate-all:
 	@$(GENERATE_ALL_CMD) echo "All Generation Tasks Completed!"
 
+
+install-r:
+	Rscript R/install.R
 
 clean:
 	rm -rf $(OUTDIR)
@@ -740,6 +743,7 @@ help:
 	@echo "  sample-[algo]      : Generate samples for target model-seed combinations (can specify DATA_MODEL and SEED)"
 	@echo "  eval-[algo]        : Evaluate results for target model-seed combinations (can specify DATA_MODEL and SEED)"
 	@echo "  conclude           : Aggregate eval results into one xlsx (can specify ALGO and/or DATA_MODEL)"
+	@echo "  install-r          : Install the R packages CTMTF and DRF need (only missing ones)"
 	@echo "  clean              : Remove dataset directories"
 	@echo ""
 	@echo "-------------------------------------------------------"

@@ -1,6 +1,7 @@
 # scripts/sample_ctmtf.py
 import argparse
 import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -52,6 +53,8 @@ def main(args: argparse.Namespace) -> None:
         str(args.seed),
         "--num_samples",
         str(args.num_samples),
+        "--python_bin",
+        sys.executable,
     ]
 
     print("[CTMTF] Sampling Settings:")
