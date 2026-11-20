@@ -67,153 +67,322 @@ where the project environment is active.
 └── workspaces/           # Model checkpoints and results
 ```
 
-## License
+## Running experiments
 
-GPL-2.0 - see [LICENSE](LICENSE)
+Every experiment runs through `make` from the repository root. A run has five
+steps. `generate` simulates a dataset, `train-<algo>` fits a method,
+`sample-<algo>` draws responses from the fitted conditional distribution at
+each test predictor, `eval-<algo>` scores those draws, and `conclude` collects
+the scores of all seeds into an Excel workbook. The method names used in
+targets are `ddpm`, `gcds`, `hy`, `flex`, `deepcde`, `srm`, `ctmtf` and `drf`.
 
-## HY (Hall--Yao implementation)
-
-The `hy` method uses
-batched PyTorch/CUDA Adam theta estimation, automatic
-**per-seed** selection of `(h, H)` using validation Energy Score (the 1D CRPS), and a shared
-conditional sampler for tuning and final sampling.
+These commands run DDPM on one model and one seed.
 
 ```bash
-make generate DATA_MODEL=U7 SEED=230 TRAIN=2000 VALID=600 TEST=1000
-make train-hy DATA_MODEL=U7 SEED=230
-make sample-hy DATA_MODEL=U7 SEED=230 SAMPLES=300
-make eval-hy DATA_MODEL=U7 SEED=230
+make generate DATA_MODEL=U1 SEED=230
+make train-ddpm DATA_MODEL=U1 SEED=230
+make sample-ddpm DATA_MODEL=U1 SEED=230
+make eval-ddpm DATA_MODEL=U1 SEED=230
+make conclude-ddpm
+```
+
+When `DATA_MODEL` or `SEED` is left off the command line, the `train-<algo>`,
+`sample-<algo>`, `eval-<algo>` and `generate-all` targets loop over every
+model in `ALL_MODELS` and every seed in `ALL_SEEDS`. Each method target skips
+the models it does not apply to (see [Methods](#methods)). The full sweep for
+one method runs as follows.
+
+```bash
+make generate-all
+make train-hy
+make sample-hy
+make eval-hy
 make conclude-hy
 ```
 
-To bypass the automatic 21-pair search, specify both bandwidths:
+`make eval` evaluates every method in `ALL_ALGOS`, or only the one named by
+`ALGO`. `make conclude` summarizes all methods and models, and accepts `ALGO`
+and `DATA_MODEL` as filters. `make help` lists the targets.
+
+### Key variables
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `DATA_MODEL` | all of `ALL_MODELS` | Model to generate, train, sample and evaluate (`U1`-`U7`, `M1`-`M4`; `generate` also accepts `O7`) |
+| `SEED` | all of `ALL_SEEDS` | Dataset seed; `ALL_SEEDS` holds the 50 seeds `230`, `460`, ..., `11500` |
+| `ALGO` | all of `ALL_ALGOS` | Method for `eval` and `conclude` |
+| `TRAIN`, `VALID`, `TEST` | `1000`, `300`, `500` | Training, validation and test sample sizes |
+| `ORACLE` | `500` | Fresh responses drawn per test predictor for the oracle Energy Score |
+| `SAMPLES` | `300` | Responses drawn per test predictor at sampling time |
+| `OUTDIR` | `datasets/synthetic` | Folder that holds the generated datasets |
+
+The single-run `generate` target uses `DATA_MODEL=U1` and `SEED=230` when they
+are not given. Method settings such as `DDPM_EPOCHS`, `GCDS_LR`, `SRM_BATCH`
+and `HY_RADIUS` are Makefile variables with defaults in the `Makefile`, and any
+of them can be overridden on the command line.
+
+### Where outputs land
+
+`generate` writes `train.npz`, `valid.npz` and `test.npz` to
+`$(OUTDIR)/<model>/seed_<seed>/`. Each file holds the predictors `X` and the
+responses `Y`, and `test.npz` also holds the oracle score `ES_oracle`.
+`make clean` removes `$(OUTDIR)`.
+
+Each method writes to `workspaces/<algo>/<model>/seed_<seed>/`, relative to the
+directory `make` runs in.
+
+| File | Written by | Contents |
+|---|---|---|
+| `config.yaml` | `train-<algo>` | Arguments of the training run |
+| model files | `train-<algo>` | Method-specific, for example `model_last.pth` and `model_best.pth` (DDPM, DeepCDE), `generator.pth` (GCDS, SRM), `model.pth` and `model_tuned.pth` (FlexCode), `theta.npz` (HY), `model.rds` (CTMTF, DRF) |
+| `sampled.npz` | `sample-<algo>` | `Y_hat` (draws, shape `(n_test, SAMPLES, response_dim)`), `X` and `Y_true` |
+| `eval.npz` | `eval-<algo>` | The metrics described in [Evaluation](#evaluation) |
+
+`conclude` writes one workbook under `workspaces/`. Its name follows the
+filters given.
+
+- `make conclude` writes `workspaces/all.xlsx`
+- `make conclude ALGO=ddpm` writes `workspaces/ddpm.xlsx`
+- `make conclude DATA_MODEL=U1` writes `workspaces/U1.xlsx`
+- `make conclude ALGO=ddpm DATA_MODEL=U1` writes `workspaces/ddpm_U1.xlsx`
+
+`conclude-<algo>` is a shortcut for `make conclude ALGO=<algo>`.
+
+## Methods
+
+The PyTorch methods (DDPM, GCDS, DeepCDE, SRM and the HY theta fit) use CUDA
+when it is available and the CPU otherwise. No script has a device flag. To
+force the CPU on a CUDA machine, hide the GPU from the process, for example
+`CUDA_VISIBLE_DEVICES="" make train-hy DATA_MODEL=U1 SEED=230`. CTMTF and DRF
+run in R (see [R setup](#r-setup-ctmtf-and-drf)).
+
+**DDPM** is a conditional denoising diffusion model. An MLP conditioned on the
+predictors learns to remove noise from the response over `DDPM_TIME_STEP`
+diffusion steps (default `300`, linear noise schedule), and sampling runs the
+reverse diffusion from Gaussian noise.
+
+**GCDS** trains a conditional generator against a discriminator. The generator
+maps the predictors and a three-dimensional noise vector to a response draw.
+
+**DeepCDE** expands the conditional density in a basis (`DEEPCDE_BASIS`,
+default `cosine`, with `DEEPCDE_NUM_BASIS` terms, default `31`) on the
+response rescaled to its training range. A neural network predicts the basis
+coefficients. Sampling evaluates the density on a grid of
+`DEEPCDE_NUM_YGRID` points (default `200`) and draws from it.
+
+**FlexCode** also uses a basis expansion (`FLEX_BASIS`, default `cosine`, up to
+`FLEX_MAX_BASIS` terms, default `31`), but fits the coefficients by regression
+(`FLEX_REG_METHOD`, `rf` for random forests by default or `knn`). Training
+also tunes a bump threshold and a sharpening exponent on the validation set
+and saves the result as `model_tuned.pth`. Sampling uses the tuned model
+because `FLEX_TUNED_MODEL` defaults to `--tuned-model`. See
+[FlexCode sampling grid](#flexcode-sampling-grid).
+
+**HY** is the Hall--Yao single-index estimator. It estimates one direction
+`theta` so that the response depends on the predictors through `theta^T X`,
+then estimates the conditional distribution function by local-linear smoothing
+on that projection and samples by inverting it. HY needs a scalar response.
+See [HY details](#hy-details).
+
+**SRM** is a neural conditional generator trained by minimizing a Monte Carlo
+Energy Score. During training it draws `SRM_TRAIN_SAMPLES` responses (default
+`30`) per training point to estimate the score.
+
+**CTMTF** fits a conditional transformation model with a transformation
+forest (`traforest` from `trtf`, on a Bernstein basis of order 5, 100 trees).
+Sampling draws random probability levels and takes the predicted conditional
+quantiles at those levels.
+
+**DRF** fits a distributional random forest (`drf`, splitting rule
+`FourierMMD` by default). For each test predictor the forest gives weights
+over the training points, and sampling resamples the training responses with
+those weights.
+
+### Which models each method runs on
+
+The applicability rules live in `skip_rules.mk`, which both the `Makefile` and
+`scripts/conclude_simulation.py` read. The model groups are
+`UNIVARIATE_MODELS` (`U1`-`U7`), `MULTIVARIATE_MODELS` (`M1`-`M4`) and
+`ALL_MODELS` (both).
+
+| Method | Rule in `skip_rules.mk` | U1 | U2 | U3 | U4 | U5 | U6 | U7 | M1 | M2 | M3 | M4 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| DDPM | `DDPM_APPLY_MODELS := $(ALL_MODELS)` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| GCDS | `GCDS_APPLY_MODELS := $(ALL_MODELS)` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| DeepCDE | `DEEPCDE_APPLY_MODELS := $(UNIVARIATE_MODELS)` | yes | yes | yes | yes | yes | yes | yes | - | - | - | - |
+| FlexCode | `FLEX_APPLY_MODELS := $(UNIVARIATE_MODELS)` | yes | yes | yes | yes | yes | yes | yes | - | - | - | - |
+| HY | `HY_APPLY_MODELS := U1 U2 U3 U4 U7` | yes | yes | yes | yes | - | - | yes | - | - | - | - |
+| SRM | `SRM_APPLY_MODELS := $(ALL_MODELS)` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| CTMTF | `CTMTF_APPLY_MODELS := $(UNIVARIATE_MODELS)` | yes | yes | yes | yes | yes | yes | yes | - | - | - | - |
+| DRF | `DRF_APPLY_MODELS := $(ALL_MODELS)` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+
+Method targets skip every model outside the method's rule, and `conclude`
+marks those pairs as `not applicable`.
+
+## Models
+
+The synthetic models are defined in `condgen_benchmark/data/synthetic.py`.
+Unless stated otherwise, the predictors are independent standard normal and
+`eps` is standard normal noise independent of `X`.
+
+| Model | `X` dim | `Y` dim | Conditional distribution |
+|---|---|---|---|
+| `U1` | 4 | 1 | `Y = sin(X)^T theta + eps`, with `theta = (0.5, 0.5, 0.5, 0.5)` normalized to unit length |
+| `U2` | 4 | 1 | `Y = 0.5 sum_j sin(Z_j X_j) + eps`, with random signs `Z_j` in {-1, +1} |
+| `U3` | 4 | 1 | As `U2`, with `Z_j ~ Uniform(0, 1)` |
+| `U4` | 5 | 1 | `Y = X1^2 + exp(X2 + X3/3) + X4 - X5 + (0.5 + X2^2/2 + X5^2/2) eps`, heteroscedastic Gaussian noise |
+| `U5` | 30 | 1 | `Y = m(X) exp(0.25 eps)`, with `m(X) = 5 + X1^2/3 + X2^2 + X3^2 + X4 + X5` and `eps` a mixture of N(-1, 1) and N(1, 1) whose weight depends on `X1` through a logistic function |
+| `U6` | 30 | 1 | `Y = m(X) exp(0.5 eps)`, with the same `m(X)` as `U5` and `eps` an equal mixture of N(-2, 1) and N(2, 1) |
+| `U7` | 3 | 1 | Single-index Gaussian model, `Z = beta^T X` with `beta = (1, 2, -1)/sqrt(6)` and `Y = sin(1.5 Z) + (0.7 + 0.2 tanh(Z)) eps` |
+| `M1` | 5 | 7 | `Y = (X1^2, ..., X5^2, exp(X2 + X5/3), sin(X4 + X5)) + eps`, with `eps ~ N(0, I_7)` |
+| `M2` | 30 | 5 | `X ~ Uniform(0, 1)^30` and `Y` Gaussian with mean zero, unit variances and all correlations equal to `X1` |
+| `M3` | 30 | 2 | Bivariate extension of `U5` with correlated mixture errors and two location functions |
+| `M4` | 5 | 10 | `X ~ Uniform(-1, 1)^5` and `Y` an eight-component Gaussian mixture whose weights, location and rotation depend on `X` |
+
+`O7` is a generator-only model. It has one predictor `X ~ N(0, 1)` and
+`Y = exp(sin(20 X + eps))`, and its conditional mean and standard deviation
+come from a truncated modified-Bessel series. `O7` is not in `ALL_MODELS` or
+any `*_APPLY_MODELS` rule, so sweeps and `conclude` leave it out. It can be
+generated explicitly with `make generate`.
+
+```bash
+make generate DATA_MODEL=O7 SEED=230
+```
+
+## Evaluation
+
+`eval-<algo>` loads `sampled.npz` and draws, at the same test predictors, as
+many fresh responses from the true conditional distribution as there are
+method draws. It then computes the Energy Score of the method's draws `Yhat`
+against the true draws `Y`, averaged over test predictors,
+
+```text
+ES = E|Yhat - Y| - 1/2 E|Yhat - Yhat'|
+```
+
+where `|.|` is the Euclidean norm, the first term averages over all method and
+true pairs, and the second averages over distinct pairs of method draws (a
+U-statistic). Lower is better.
+
+The oracle baseline `ES_oracle` is the Energy Score of the true distribution
+itself, `1/2 E|Y - Y'|`. `generate` computes it once per dataset from `ORACLE`
+fresh responses at each test predictor and stores it in `test.npz`, so every
+method on that dataset is compared with the same baseline. The headline metric
+is the relative score
+
+```text
+rEEScore = (ES - ES_oracle) / ES_oracle
+```
+
+which is near zero for a method that matches the true conditional
+distribution. Evaluation stops with an error if `test.npz` has no
+`ES_oracle`, in which case the dataset needs to be generated again.
+
+Both scores are computed in chunks of 32 test predictors at a time, on CUDA
+when it is available, so peak memory depends on the chunk size and not on the
+number of test points.
+
+`eval.npz` also stores the mean and median squared errors of the conditional
+mean and standard deviation (`mu_mse`, `mu_medse`, `sigma_mse`,
+`sigma_medse`), and the mean Wasserstein-1 distance `w_mean` (sliced over 100
+projections when the response is multivariate), together with `escore_mean`,
+`ES_oracle` and `reescore`.
+
+The workbook written by `conclude` has two sheets. The `summary` sheet has one
+row per model and method, and gives each metric as `mean (sd)` over the seeds
+found. The `details` sheet gives the same means and standard deviations as
+separate numeric columns, with a status for each pair (`ok`, `missing`,
+`not applicable` or `read error`) and the number of seeds read.
+
+## HY details
+
+### Bandwidth tuning
+
+HY uses two bandwidths, `h` for estimating `theta` and `H` for the conditional
+distribution function. By default `train-hy` selects them separately for each
+model and seed from a grid of 21 pairs. The grid has six values
+`h = 0.1, 0.3, ..., 1.1`, and for each `h` the values `H = h + 0.1, h + 0.3,
+..., 1.2`. For each pair, tuning scores the validation data with the Energy
+Score (the CRPS in one dimension) and keeps the pair with the lowest score.
+
+Tuning uses `HY_N_SUB_VAL` validation points (default `200`), drawn at random
+with the dataset seed, and a distribution-function grid of
+`HY_NUM_Y_GRID_TUNING` points (default `50`). The Energy Score is computed
+exactly from the estimated inverse distribution function, without Monte Carlo
+draws. Since `theta` depends only on `h`, the six `theta` fits are shared
+across the 21 pairs, and the projections and response ordering are computed
+once for each `h`.
+
+To skip the search, give both bandwidths on the command line.
 
 ```bash
 make train-hy DATA_MODEL=U7 SEED=230 HY_H=0.7 HY_H_CDF=0.8
 ```
 
-Tuning controls (Makefile defaults): `HY_N_SUB_VAL=200` validation points,
-`HY_NUM_Y_GRID_TUNING=50` CDF grid points. The default six theta fits
-use batched Adam on CUDA when available, otherwise on CPU. Tuning evaluates the Energy
-Score directly from the estimated inverse CDF without Monte Carlo draws.
-Final sampling uses `SAMPLES` for draws per test predictor and
-`HY_NUM_Y_GRID=200` for CDF grid points (`--num-samples`, `--ny` in Python).
-The grid is computed from the *response* `Y_train`, and the CDF is made
-nondecreasing with a cumulative maximum before inverse sampling.
-Training saves `theta.npz` (including the selected bandwidths), `config.yaml`,
-and `tuning.csv` if tuning was automatic, under `workspaces/hy/...`.
+### Theta fitting
 
-The `hy` theta estimator uses PyTorch/Adam with automatic CPU/CUDA selection. The `hy` conditional
-sampler still uses Numba on CPU; evaluation retains its existing CPU path.
+The criterion compares local-linear estimates of the conditional distribution
+function with empirical distribution functions over a fixed set of balls in
+predictor space. The ball centers form the grid {-1.5, 0, 1.5} in each
+predictor coordinate, with radius `HY_RADIUS` (default `1.0`). The criterion is
+the full leave-two-out Hall--Yao objective, evaluated with an Epanechnikov
+kernel, and the ball-membership matrix is stored as a sparse CSR tensor.
 
-### HY tuning speed and timing update
+All `h` values are fitted together in one batched float32 PyTorch run with
+Adam, on CUDA when available. Each `h` has its own parameter vector `w`, with
+`theta = w / sqrt(sum(w^2) + 1e-5)`, and all start from the same random unit
+vector drawn from the seed. Each `h` keeps its own best value and its own
+early-stopping counter, which any strictly lower finite objective resets, and
+an `h` whose counter reaches the patience leaves the batch. The settings are
+`HY_ADAM_LR` (default `0.01`), `HY_ADAM_MAX_EPOCHS` (default `300`) and
+`HY_ADAM_PATIENCE` (default `30`). Where a local-linear denominator falls below `1e-8` in
+absolute value, the objective uses the empirical distribution function
+instead. Each fitted `theta` is signed so that
+its first nonzero entry is positive.
 
-The HY theta objective now uses sparse CSR multiplication for its ball
-membership matrix. When several candidate `H` values share the same `h`,
-tuning also reuses the response order and the training/validation projections
-onto the fitted theta, rather than rebuilding them for each candidate.
-The same conditional-sampling core remains in use for tuning and final
-sampling; no statistical rule or bandwidth grid has been changed in this update.
+### Sampling
 
-The training output records `t_opt` (wall-clock duration of the six theta
-fits, which may now run concurrently) and `t_total` (entire fit/tuning time) in
-`theta.npz`, and corresponding
-`theta_fit_seconds`/`total_fit_seconds` fields in `config.yaml`.
+`sample-hy` reads `theta` and `H` from `theta.npz`. For each test predictor it
+estimates the conditional distribution function on a grid of `HY_NUM_Y_GRID`
+points (default `200`) spanning the training responses, clips it to [0, 1]
+and makes it nondecreasing with a cumulative maximum. It then draws `SAMPLES`
+responses by linear interpolation of the inverse at uniform draws, which are
+clipped to the smallest and largest estimated probability levels. When the local-linear
+weights cannot be normalized, the draws equal the mean training response.
+Tuning and final sampling share this sampler, which runs on the CPU with
+NumPy and Numba.
 
-For the new HY implementation, `fit_thetas()` returns
-`(fitted_theta_for_each_h, theta_fit_seconds, theta_fit_diagnostics)`:
-`fitted_theta_for_each_h[h]` is the fitted theta vector for that `h`, and
-`theta_fit_diagnostics` records `h`, `epochs`, and `best_S_theta`.
-The tuning result uses `bandwidth_energy_scores` for its 21 `(h, H, EnergyScore)`
-entries. The YAML diagnostics key is `theta_fit_diagnostics`; the saved `theta.npz` keys `theta`, `h`, `H`, `t_opt`,
-`t_total`, `success`, and the `tuning.csv` format are unchanged.
+### Saved files
 
-### 2026-10-20: Original U7 restored as O7; HY CDF sampling adjustment
+`train-hy` writes to `workspaces/hy/<model>/seed_<seed>/`.
 
-The synthetic model previously called `U7` (before its October 2026
-replacement) is available as `O7`: `X ~ N(0,1)` and
-`Y = exp(sin(20 X + epsilon))`, `epsilon ~ N(0,1)`, with the original
-Bessel-series `mean_std()` implementation. The current three-predictor `U7`
-remains unchanged. `O7` is available in the generator's `--data-name` choices:
+| File | Contents |
+|---|---|
+| `theta.npz` | `theta`, the selected `h` and `H`, `t_opt` (wall-clock seconds of the batched theta fit), `t_total` (seconds of the whole fit and tuning) and `success` |
+| `config.yaml` | The training arguments, `selected_h`, `selected_H`, `mode` (`tuned` or `manual`), `theta_fit_diagnostics` (the `h`, `epochs` and `best_S_theta` of each fit), `n_val_used`, `theta_fit_seconds` and `total_fit_seconds` |
+| `tuning.csv` | One row per pair with columns `h,H,EnergyScore`, written only when the bandwidths are tuned |
 
-```bash
-make generate DATA_MODEL=O7 SEED=230 TRAIN=1000 VALID=300 TEST=500
-```
+The code is in `condgen_benchmark/methods/hy/`. `loss.py` holds the objective
+`HallYaoLoss`, `fit.py` holds the batched Adam fit `fit_thetas`, `tuning.py`
+holds the bandwidth search, and `sampler.py` holds the shared conditional
+sampler.
 
-`O7` was **not** added to `ALL_MODELS` or method applicability rules in
-`skip_rules.mk`: it is an opt-in historical dataset, not part of default
-benchmark sweeps. The Makefile was not changed.
+## FlexCode sampling grid
 
-The new `hy` sampler no longer discards a valid estimated CDF merely because
-it has fewer than ten distinct levels. Inverse-CDF interpolation now uses
-all valid monotone CDF values after the existing cumulative-maximum correction.
-The safeguard for a nonfinite or near-zero normalization denominator remains.
-Theta fitting is already cached by `h`: the 21 `(h,H)` candidates invoke
-the GPU theta estimator for only the six distinct `h` values. The existing sampler
-cache also reuses sorting and projections for each fixed `h`.
-
-### FlexCode: inherit the training grid at sampling time
-
-FlexCode training uses `--ny=200` by default and stores the response grid in
-`model.pth` and `model_tuned.pth`. `sample-flex` now reads the grid from the
-selected checkpoint and passes its length to `model.predict`; it also verifies
-that the returned density columns and grid coordinates match the saved grid.
-The Makefile setting `FLEX_NUM_Y_GRID` (default 200) is passed as `--ny`
-to `train-flex`, not to `sample-flex`. The sampling `--ny` option is removed,
-so the sampling command cannot redefine training-time choices. The number
-of generated responses still comes from `SAMPLES` / `--num-samples`.
-Checkpoints without a stored response grid now raise an explicit error rather
-than deriving the response support from test labels.
+`train-flex` evaluates the density on a response grid of `FLEX_NUM_Y_GRID`
+points (default `200`, passed as `--ny`) and stores that grid in both
+`model.pth` and `model_tuned.pth`. `sample-flex` reads the grid from the
+selected checkpoint, predicts on it, and checks that the predicted density
+and grid match the saved grid. The sampling command has no grid option, so a
+sampling run cannot change a choice made at training time, and `SAMPLES`
+only sets the number of draws. A checkpoint without a saved grid is rejected
+with an error that asks for retraining.
 
 ```bash
 make train-flex DATA_MODEL=U1 SEED=230 FLEX_NUM_Y_GRID=200
 make sample-flex DATA_MODEL=U1 SEED=230 SAMPLES=300
 ```
 
-### 2026-10-21: HY theta estimation on CUDA with batched Adam
+## License
 
-The default `make train-hy` now estimates theta for the six independent `h` values
-together on **PyTorch float32 autograd and Adam**, automatically using CUDA if available and CPU otherwise. The full
-leave-two-out Hall--Yao objective is retained (with a float32 numerical guard
-near singular local-linear denominators). The ball-incidence matrix remains
-sparse in GPU memory. `X`, `Y`, and other fixed tensors are transferred once;
-all Adam iterations remain on the selected device. It learns one parameter
-vector per `h` via `theta=w/sqrt(sum(w*w)+1e-5)`. Each row has an independent
-best parameter and early stopping counter; finished rows are removed from
-subsequent objective evaluations.
-
-Defaults: `HY_ADAM_LR=0.01`, `HY_ADAM_MAX_EPOCHS=300`,
-`HY_ADAM_PATIENCE=30`. Device selection is automatic (CUDA if available, otherwise CPU). Any strictly lower finite loss
-resets that theta's patience.
-
-The **21-pair Energy Score search, CPU conditional sampler, evaluation and
-output file formats** are unchanged. There is no need to retrain other methods.
-The optimized theta and bandwidths continue to be saved to
-`workspaces/hy/<data-name>/seed_<seed>/theta.npz`. Per-h epoch counts and
-lowest objective values appear under `theta_fit_diagnostics` in `config.yaml`.
-
-The HY training CLI has no device flag. For a CPU-only comparison on a CUDA machine, hide CUDA from the process, e.g. `CUDA_VISIBLE_DEVICES="" make train-hy DATA_MODEL=U1 SEED=230`.
-
-### 2026-10-21: HY GPU-only cleanup
-
-The adopted `hy` implementation now contains only the PyTorch/Adam theta
-optimizer. Its obsolete Numba/SLSQP theta criterion,
-optimizer-selection flags, and CPU-only regression tests have been removed.
-The GPU fixed-term preparation is independent of the legacy CPU estimator.
-The CPU conditional sampler, Energy Score tuning, and benchmark evaluation were not changed in that update.
-
-
-### HY source structure (2026-10-21)
-
-`condgen_benchmark/methods/hy/loss.py` contains `HallYaoLoss`, the
-differentiable Hall--Yao objective. `fit.py` contains `fit_thetas`, the
-batched Adam optimizer for the six candidate theta parameters.
-`tuning.py` selects `(h,H)` via Energy Score, and `sampler.py` retains the
-existing CPU conditional sampler. This is a naming and module split only;
-Torch sparse CSR computation and warning behavior are unchanged.
-
-### 2026-10-21: Automatic device selection for HY and SRM
-
-HY theta estimation and SRM sampling now both detect CUDA automatically,
-falling back to CPU if unavailable. No device-related Makefile or Python CLI
-arguments are needed. Other method algorithms and defaults are unchanged.
+GPL-2.0 - see [LICENSE](LICENSE)
